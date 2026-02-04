@@ -472,6 +472,492 @@
             }
 
             // Default placeholder for other tools
+
+// ========================================
+// ADDITIONAL TOOLS FOR CYPHER//TOOLKIT
+// ========================================
+// Copy these tool implementations into your ToolInterface function
+// Add them right after the existing hash-analysis tool
+
+// XOR BRUTEFORCE TOOL
+if (tool === 'xor-bruteforce') {
+    const [results, setResults] = useState([]);
+
+    const xorBruteforce = () => {
+        const data = input;
+        const resultList = [];
+        
+        for (let key = 0; key < 256; key++) {
+            let decoded = '';
+            let score = 0;
+            
+            for (let i = 0; i < data.length; i++) {
+                const char = data.charCodeAt(i) ^ key;
+                decoded += String.fromCharCode(char);
+                
+                if (char >= 32 && char <= 126) score += 1;
+                if ('etaoinshrdlu'.includes(String.fromCharCode(char).toLowerCase())) score += 2;
+            }
+            
+            resultList.push({
+                key: key.toString(16).padStart(2, '0'),
+                keyDec: key,
+                score,
+                preview: decoded.substring(0, 80)
+            });
+        }
+        
+        resultList.sort((a, b) => b.score - a.score);
+        setResults(resultList.slice(0, 15));
+        setOutput('Top 15 results sorted by scoring. Click a result to view full output.');
+    };
+
+    return e('div', { className: 'space-y-4' },
+        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'XOR Bruteforce Attack'),
+        e('div', null,
+            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'ENCRYPTED DATA'),
+            e('textarea', {
+                value: input,
+                onChange: (ev) => setInput(ev.target.value),
+                className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
+                placeholder: 'Enter encrypted data...'
+            })
+        ),
+        e('button', {
+            onClick: xorBruteforce,
+            className: 'w-full px-4 py-3 bg-[#ff00ff]/20 hover:bg-[#ff00ff]/30 border border-[#ff00ff] rounded text-[#ff00ff] font-bold transition-all'
+        },
+            e(icons.Zap, { className: 'w-4 h-4 inline mr-2' }),
+            'BRUTEFORCE ALL KEYS (0x00-0xFF)'
+        ),
+        results.length > 0 && e('div', { className: 'bg-black/50 border border-gray-700 rounded p-4' },
+            e('h4', { className: 'text-sm font-bold mb-3 text-[#00ff41]' }, 'TOP CANDIDATES'),
+            e('div', { className: 'space-y-2 max-h-80 overflow-y-auto' },
+                ...results.map((result, idx) =>
+                    e('div', {
+                        key: idx,
+                        className: 'bg-[#0f1419] border border-gray-800 rounded p-3 hover:border-[#00ff41]/50 transition-colors cursor-pointer',
+                        onClick: () => setOutput(result.preview)
+                    },
+                        e('div', { className: 'flex justify-between mb-1' },
+                            e('span', { className: 'text-[#00ff41] font-bold text-xs' }, 
+                                `Key: 0x${result.key} (${result.keyDec})`
+                            ),
+                            e('span', { className: 'text-gray-400 text-xs' }, `Score: ${result.score}`)
+                        ),
+                        e('div', { className: 'text-xs font-mono text-gray-300 truncate' }, result.preview)
+                    )
+                )
+            )
+        ),
+        e('div', null,
+            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'SELECTED OUTPUT'),
+            e('textarea', {
+                value: output,
+                readOnly: true,
+                className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none',
+                placeholder: 'Click on a candidate to view full output...'
+            })
+        )
+    );
+}
+
+// CLASSICAL CIPHER LAB
+if (tool === 'classical-cipher') {
+    const [shift, setShift] = useState(13);
+    const [keyword, setKeyword] = useState('');
+
+    const caesarCipher = (text, shift, decrypt = false) => {
+        const s = decrypt ? (26 - (shift % 26)) : (shift % 26);
+        return text.replace(/[a-zA-Z]/g, c => {
+            const base = c <= 'Z' ? 65 : 97;
+            return String.fromCharCode(((c.charCodeAt(0) - base + s) % 26) + base);
+        });
+    };
+
+    const vigenereCipher = (text, key, decrypt = false) => {
+        let result = '';
+        let keyIndex = 0;
+        const upperKey = key.toUpperCase();
+        
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            if (/[a-zA-Z]/.test(char)) {
+                const base = char <= 'Z' ? 65 : 97;
+                const charCode = char.toUpperCase().charCodeAt(0) - 65;
+                const keyCode = upperKey.charCodeAt(keyIndex % upperKey.length) - 65;
+                const shifted = decrypt ? (charCode - keyCode + 26) % 26 : (charCode + keyCode) % 26;
+                result += String.fromCharCode(shifted + base);
+                keyIndex++;
+            } else {
+                result += char;
+            }
+        }
+        return result;
+    };
+
+    const frequencyAnalysis = (text) => {
+        const freq = {};
+        const letters = text.toUpperCase().replace(/[^A-Z]/g, '');
+        for (let char of letters) {
+            freq[char] = (freq[char] || 0) + 1;
+        }
+        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+        return sorted.slice(0, 10).map(([char, count]) => 
+            `${char}: ${count} (${(count/letters.length*100).toFixed(1)}%)`
+        ).join('\n');
+    };
+
+    return e('div', { className: 'space-y-4' },
+        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'Classical Cipher Laboratory'),
+        e('div', { className: 'grid grid-cols-2 gap-4' },
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'INPUT TEXT'),
+                e('textarea', {
+                    value: input,
+                    onChange: (ev) => setInput(ev.target.value),
+                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
+                    placeholder: 'Enter text...'
+                })
+            ),
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'),
+                e('textarea', {
+                    value: output,
+                    readOnly: true,
+                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none',
+                    placeholder: 'Results...'
+                })
+            )
+        ),
+        e('div', { className: 'grid grid-cols-2 gap-4' },
+            e('div', null,
+                e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'CAESAR CIPHER'),
+                e('div', { className: 'flex gap-2 mb-2' },
+                    e('input', {
+                        type: 'number',
+                        value: shift,
+                        onChange: (ev) => setShift(parseInt(ev.target.value) || 0),
+                        min: 0,
+                        max: 25,
+                        className: 'w-20 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none'
+                    }),
+                    e('span', { className: 'flex items-center text-sm text-gray-400' }, 'shift')
+                ),
+                e('div', { className: 'flex gap-2' },
+                    e('button', {
+                        onClick: () => setOutput(caesarCipher(input, shift, false)),
+                        className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold'
+                    }, 'ENCRYPT'),
+                    e('button', {
+                        onClick: () => setOutput(caesarCipher(input, shift, true)),
+                        className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold'
+                    }, 'DECRYPT')
+                )
+            ),
+            e('div', null,
+                e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'VIGENÈRE'),
+                e('input', {
+                    type: 'text',
+                    value: keyword,
+                    onChange: (ev) => setKeyword(ev.target.value),
+                    className: 'w-full px-3 py-2 mb-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
+                    placeholder: 'Keyword'
+                }),
+                e('div', { className: 'flex gap-2' },
+                    e('button', {
+                        onClick: () => keyword && setOutput(vigenereCipher(input, keyword, false)),
+                        className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold'
+                    }, 'ENCRYPT'),
+                    e('button', {
+                        onClick: () => keyword && setOutput(vigenereCipher(input, keyword, true)),
+                        className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold'
+                    }, 'DECRYPT')
+                )
+            )
+        ),
+        e('button', {
+            onClick: () => setOutput(frequencyAnalysis(input)),
+            className: 'w-full px-4 py-3 bg-[#00ff41]/20 border border-[#00ff41] rounded text-[#00ff41] font-bold'
+        }, 'FREQUENCY ANALYSIS')
+    );
+}
+
+// RSA CALCULATOR
+if (tool === 'rsa-toolkit') {
+    const [n, setN] = useState('');
+    const [e, setE] = useState('65537');
+    const [p, setP] = useState('');
+    const [q, setQ] = useState('');
+
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+    const modInverse = (a, m) => {
+        let [old_r, r] = [a, m];
+        let [old_s, s] = [1, 0];
+        while (r !== 0) {
+            const quotient = Math.floor(old_r / r);
+            [old_r, r] = [r, old_r - quotient * r];
+            [old_s, s] = [s, old_s - quotient * s];
+        }
+        return old_s < 0 ? old_s + m : old_s;
+    };
+
+    const factorSmallN = () => {
+        const modulus = parseInt(n);
+        if (isNaN(modulus) || modulus < 4) {
+            setOutput('Invalid modulus');
+            return;
+        }
+        for (let i = 2; i <= Math.sqrt(modulus); i++) {
+            if (modulus % i === 0) {
+                const p_val = i;
+                const q_val = modulus / i;
+                setP(p_val.toString());
+                setQ(q_val.toString());
+                setOutput(`Factored!\np = ${p_val}\nq = ${q_val}`);
+                return;
+            }
+        }
+        setOutput('Could not factor (too large or prime)');
+    };
+
+    const calculatePrivateKey = () => {
+        const p_val = parseInt(p);
+        const q_val = parseInt(q);
+        const e_val = parseInt(e);
+        
+        if (isNaN(p_val) || isNaN(q_val) || isNaN(e_val)) {
+            setOutput('Invalid values');
+            return;
+        }
+        
+        const n_calc = p_val * q_val;
+        const phi = (p_val - 1) * (q_val - 1);
+        
+        if (gcd(e_val, phi) !== 1) {
+            setOutput('e and φ(n) are not coprime!');
+            return;
+        }
+        
+        const d = modInverse(e_val, phi);
+        setN(n_calc.toString());
+        setOutput(`n = ${n_calc}\nφ(n) = ${phi}\nd (private) = ${d}`);
+    };
+
+    return e('div', { className: 'space-y-4' },
+        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'RSA Calculator'),
+        e('div', { className: 'grid grid-cols-2 gap-4' },
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'n'),
+                e('input', {
+                    type: 'text',
+                    value: n,
+                    onChange: (ev) => setN(ev.target.value),
+                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
+                    placeholder: 'n = p × q'
+                })
+            ),
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'e'),
+                e('input', {
+                    type: 'text',
+                    value: e,
+                    onChange: (ev) => setE(ev.target.value),
+                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
+                    placeholder: '65537'
+                })
+            )
+        ),
+        e('button', {
+            onClick: factorSmallN,
+            className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold'
+        }, 'FACTOR n (small values only)'),
+        e('div', { className: 'grid grid-cols-2 gap-4' },
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'p'),
+                e('input', {
+                    type: 'text',
+                    value: p,
+                    onChange: (ev) => setP(ev.target.value),
+                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
+                    placeholder: 'Prime p'
+                })
+            ),
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'q'),
+                e('input', {
+                    type: 'text',
+                    value: q,
+                    onChange: (ev) => setQ(ev.target.value),
+                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
+                    placeholder: 'Prime q'
+                })
+            )
+        ),
+        e('button', {
+            onClick: calculatePrivateKey,
+            className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold'
+        }, 'CALCULATE PRIVATE KEY'),
+        e('div', null,
+            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'),
+            e('textarea', {
+                value: output,
+                readOnly: true,
+                className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none'
+            })
+        )
+    );
+}
+
+// JWT TOOLKIT
+if (tool === 'jwt-toolkit') {
+    const [decodedHeader, setDecodedHeader] = useState('');
+    const [decodedPayload, setDecodedPayload] = useState('');
+    const [signature, setSignature] = useState('');
+
+    const decodeJWT = () => {
+        try {
+            const parts = input.split('.');
+            if (parts.length !== 3) {
+                setOutput('Invalid JWT format');
+                return;
+            }
+            const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            setDecodedHeader(JSON.stringify(header, null, 2));
+            setDecodedPayload(JSON.stringify(payload, null, 2));
+            setSignature(parts[2]);
+            setOutput('JWT decoded. Modify and forge below.');
+        } catch (err) {
+            setOutput('Error: ' + err.message);
+        }
+    };
+
+    const forgeJWT = () => {
+        try {
+            const header = JSON.parse(decodedHeader);
+            const payload = JSON.parse(decodedPayload);
+            const base64UrlEncode = (str) => {
+                return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            };
+            const newHeader = base64UrlEncode(JSON.stringify(header));
+            const newPayload = base64UrlEncode(JSON.stringify(payload));
+            setOutput(`${newHeader}.${newPayload}.${signature}`);
+        } catch (err) {
+            setOutput('Error: ' + err.message);
+        }
+    };
+
+    return e('div', { className: 'space-y-4' },
+        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'JWT Swiss Army Knife'),
+        e('textarea', {
+            value: input,
+            onChange: (ev) => setInput(ev.target.value),
+            className: 'w-full h-20 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
+            placeholder: 'Paste JWT...'
+        }),
+        e('button', {
+            onClick: decodeJWT,
+            className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold'
+        }, 'DECODE JWT'),
+        e('div', { className: 'grid grid-cols-2 gap-4' },
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'HEADER'),
+                e('textarea', {
+                    value: decodedHeader,
+                    onChange: (ev) => setDecodedHeader(ev.target.value),
+                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none'
+                })
+            ),
+            e('div', null,
+                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'PAYLOAD'),
+                e('textarea', {
+                    value: decodedPayload,
+                    onChange: (ev) => setDecodedPayload(ev.target.value),
+                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none'
+                })
+            )
+        ),
+        e('input', {
+            type: 'text',
+            value: signature,
+            onChange: (ev) => setSignature(ev.target.value),
+            className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
+            placeholder: 'Signature'
+        }),
+        e('button', {
+            onClick: forgeJWT,
+            className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold'
+        }, 'FORGE JWT'),
+        e('textarea', {
+            value: output,
+            readOnly: true,
+            className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none'
+        })
+    );
+}
+
+// HEX EDITOR
+if (tool === 'hex-editor') {
+    const [hexData, setHexData] = useState('');
+
+    const textToHex = () => {
+        const hex = Array.from(input).map((c, i) => {
+            const h = c.charCodeAt(0).toString(16).padStart(2, '0');
+            return (i % 16 === 0 ? '\n' : '') + h + ' ';
+        }).join('');
+        setHexData(hex);
+        setOutput(hex);
+    };
+
+    const hexToText = () => {
+        try {
+            const cleaned = hexData.replace(/[^0-9a-f]/gi, '');
+            const text = cleaned.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join('');
+            setOutput(text);
+        } catch (err) {
+            setOutput('Error: ' + err.message);
+        }
+    };
+
+    return e('div', { className: 'space-y-4' },
+        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'Hex Editor Pro'),
+        e('div', { className: 'grid grid-cols-2 gap-4' },
+            e('div', null,
+                e('textarea', {
+                    value: input,
+                    onChange: (ev) => setInput(ev.target.value),
+                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
+                    placeholder: 'Text...'
+                }),
+                e('button', {
+                    onClick: textToHex,
+                    className: 'mt-2 w-full px-4 py-2 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-xs font-bold'
+                }, 'TEXT → HEX')
+            ),
+            e('div', null,
+                e('textarea', {
+                    value: hexData,
+                    onChange: (ev) => setHexData(ev.target.value),
+                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
+                    placeholder: 'Hex...'
+                }),
+                e('button', {
+                    onClick: hexToText,
+                    className: 'mt-2 w-full px-4 py-2 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-xs font-bold'
+                }, 'HEX → TEXT')
+            )
+        ),
+        e('textarea', {
+            value: output,
+            readOnly: true,
+            className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none'
+        })
+    );
+}
+
+
+            
             return e('div', { className: 'text-center py-12 text-gray-500' },
                 e(icons.Terminal, { className: 'w-16 h-16 mx-auto mb-4 opacity-50' }),
                 e('p', { className: 'text-lg font-bold' }, 'Tool Implementation In Progress'),
