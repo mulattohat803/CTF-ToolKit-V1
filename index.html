@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYPHER//TOOLKIT - Professional CTF Arsenal</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
@@ -39,47 +39,132 @@
         };
         const { useState } = React;
         const e = React.createElement;
-        <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYPHER//TOOLKIT - Professional CTF Arsenal</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
-    <style>
-        body { margin: 0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden; }
-        h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
-        @keyframes gridScroll { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
-        @keyframes glowPulse { 0%, 100% { filter: drop-shadow(0 0 8px currentColor); } 50% { filter: drop-shadow(0 0 16px currentColor); } }
-        .glow-text { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
-        .terminal-border { border: 1px solid; box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1), 0 0 20px rgba(0, 255, 65, 0.1); }
-        .tool-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .tool-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0, 255, 65, 0.2); }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-    <script>
-        const Icon = ({ d, className = '', style = {} }) => React.createElement('svg', { className, style, width: '24', height: '24', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('path', { d }));
-        const icons = {
-            Shield: (p) => Icon({ ...p, d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }),
-            Terminal: (p) => Icon({ ...p, d: 'M4 17l6-6-6-6M12 19h8' }),
-            Lock: (p) => Icon({ ...p, d: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4' }),
-            Globe: (p) => Icon({ ...p, d: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' }),
-            Eye: (p) => Icon({ ...p, d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z' }),
-            Cpu: (p) => Icon({ ...p, d: 'M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4' }),
-            Search: (p) => Icon({ ...p, d: 'M11 2a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM21 21l-4.35-4.35' }),
-            ChevronRight: (p) => Icon({ ...p, d: 'M9 18l6-6-6-6' }),
-            Zap: (p) => Icon({ ...p, d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' }),
-            Fingerprint: (p) => Icon({ ...p, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' }),
-            Key: (p) => Icon({ ...p, d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' })
-        };
-        const { useState } = React;
-        const e = React.createElement;
+        function CTFToolkit() {
+            const [activeCategory, setActiveCategory] = useState('crypto');
+            const [activeTool, setActiveTool] = useState('multi-codec');
+            const categories = [
+                { id: 'crypto', name: 'Cryptography', icon: 'Lock', color: '#00ff41' },
+                { id: 'web', name: 'Web Exploitation', icon: 'Globe', color: '#00d9ff' },
+                { id: 'forensics', name: 'Forensics', icon: 'Eye', color: '#ff00ff' },
+                { id: 'binary', name: 'Binary/Reversing', icon: 'Cpu', color: '#ffaa00' },
+                { id: 'osint', name: 'OSINT/Recon', icon: 'Search', color: '#ff0055' }
+            ];
+            const tools = {
+                crypto: [
+                    { id: 'multi-codec', name: 'Multi-Codec Engine', desc: 'Advanced encoding/decoding with auto-detection' },
+                    { id: 'hash-analysis', name: 'Hash Analyzer', desc: 'Hash identification & generation' },
+                    { id: 'xor-bruteforce', name: 'XOR Bruteforcer', desc: 'Multi-key XOR analysis with scoring' },
+                    { id: 'classical-cipher', name: 'Classical Cipher Lab', desc: 'Caesar, Vigenère, frequency analysis' },
+                    { id: 'rsa-toolkit', name: 'RSA Calculator', desc: 'Modular arithmetic & factoring' }
+                ],
+                web: [
+                    { id: 'jwt-toolkit', name: 'JWT Swiss Army Knife', desc: 'Decode, modify, forge JWTs' },
+                    { id: 'payload-gen', name: 'Payload Generator', desc: 'SQLi, XSS, command injection' },
+                    { id: 'url-parser', name: 'URL Parser', desc: 'Parse URLs into components' },
+                    { id: 'html-encoder', name: 'HTML Encoder', desc: 'HTML entity encoding' }
+                ],
+                forensics: [
+                    { id: 'hex-editor', name: 'Hex Editor Pro', desc: 'Hex/text conversion & search' },
+                    { id: 'file-analyzer', name: 'File Signature Analyzer', desc: 'Identify by magic bytes' },
+                    { id: 'string-extractor', name: 'String Extractor', desc: 'Extract ASCII strings' },
+                    { id: 'binary-converter', name: 'Binary Converter', desc: 'Format conversion' }
+                ],
+                binary: [
+                    { id: 'ascii-converter', name: 'ASCII Converter', desc: 'ASCII code conversion' },
+                    { id: 'endian-converter', name: 'Endian Converter', desc: 'Byte order swap' },
+                    { id: 'bit-manipulator', name: 'Bit Manipulator', desc: 'Bitwise operations' },
+                    { id: 'number-base', name: 'Number Base', desc: 'Dec/Hex/Oct/Bin' }
+                ],
+                osint: [
+                    { id: 'hash-cracker', name: 'Hash Helper', desc: 'Generate variations' },
+                    { id: 'username-formatter', name: 'Username Formatter', desc: 'Username formats' },
+                    { id: 'email-permutator', name: 'Email Permutator', desc: 'Email variations' },
+                    { id: 'phone-formatter', name: 'Phone Formatter', desc: 'Format phone numbers' }
+                ]
+            };
+            const currentCategory = categories.find(c => c.id === activeCategory);
+            const currentTools = tools[activeCategory] || [];
+            return e('div', { className: 'min-h-screen bg-[#0a0e1a] text-[#e0e0e0] font-mono overflow-hidden' },
+                e('div', { className: 'fixed inset-0 opacity-20 pointer-events-none' },
+                    e('div', { className: 'absolute inset-0', style: { backgroundImage: 'linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px)', backgroundSize: '50px 50px', animation: 'gridScroll 20s linear infinite' }})
+                ),
+                e('header', { className: 'relative border-b border-[#00ff41] bg-[#0a0e1a]/80 backdrop-blur-sm z-10' },
+                    e('div', { className: 'container mx-auto px-6 py-6' },
+                        e('div', { className: 'flex items-center justify-between' },
+                            e('div', { className: 'flex items-center gap-4' },
+                                e(icons.Shield, { className: 'w-10 h-10 text-[#00ff41]', style: { animation: 'glowPulse 2s ease-in-out infinite' }}),
+                                e('div', null,
+                                    e('h1', { className: 'text-3xl font-bold text-[#00ff41] glow-text tracking-wider' }, 'CYPHER//TOOLKIT'),
+                                    e('p', { className: 'text-sm text-[#00ff41]/70 mt-1' }, 'Professional CTF Arsenal v2.0 - COMPLETE EDITION')
+                                )
+                            ),
+                            e('div', { className: 'flex items-center gap-2 text-[#00ff41] text-sm' },
+                                e(icons.Terminal, { className: 'w-4 h-4' }),
+                                e('span', null, 'SYSTEM READY')
+                            )
+                        )
+                    )
+                ),
+                e('div', { className: 'container mx-auto px-6 py-8' },
+                    e('div', { className: 'grid grid-cols-12 gap-6' },
+                        e('div', { className: 'col-span-3' },
+                            e('div', { className: 'terminal-border border-[#00ff41]/30 bg-[#0f1419]/80 backdrop-blur-sm rounded-lg p-4' },
+                                e('div', { className: 'flex items-center gap-2 mb-6 text-[#00ff41] text-sm font-bold' },
+                                    e(icons.Zap, { className: 'w-4 h-4' }), e('span', null, 'CATEGORIES')
+                                ),
+                                e('div', { className: 'space-y-2' },
+                                    ...categories.map(category => {
+                                        const isActive = activeCategory === category.id;
+                                        const IconComponent = icons[category.icon];
+                                        return e('button', {
+                                            key: category.id,
+                                            onClick: () => { setActiveCategory(category.id); setActiveTool(tools[category.id][0].id); },
+                                            className: `w-full flex items-center gap-3 px-4 py-3 rounded transition-all ${isActive ? 'bg-gradient-to-r from-[#00ff41]/20 to-transparent border-l-2 text-[#00ff41]' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`,
+                                            style: { borderLeftColor: isActive ? category.color : 'transparent' }
+                                        },
+                                            e(IconComponent, { className: 'w-5 h-5', style: { color: category.color }}),
+                                            e('span', { className: 'text-sm font-medium flex-1 text-left' }, category.name),
+                                            isActive && e(icons.ChevronRight, { className: 'w-4 h-4' })
+                                        );
+                                    })
+                                ),
+                                e('div', { className: 'mt-8 pt-6 border-t border-[#00ff41]/20' },
+                                    e('div', { className: 'text-xs text-gray-500 space-y-2' },
+                                        e('div', { className: 'flex justify-between' }, e('span', null, 'Tools:'), e('span', { className: 'text-[#00ff41]' }, Object.values(tools).flat().length)),
+                                        e('div', { className: 'flex justify-between' }, e('span', null, 'Session:'), e('span', { className: 'text-[#00d9ff]' }, new Date().toLocaleTimeString()))
+                                    )
+                                )
+                            )
+                        ),
+                        e('div', { className: 'col-span-9' },
+                            e('div', { className: 'mb-6' },
+                                e('div', { className: 'flex items-center gap-3 mb-4' },
+                                    e('div', { className: 'h-px flex-1 bg-gradient-to-r from-transparent via-[#00ff41]/50 to-transparent' }),
+                                    e('h2', { className: 'text-xl font-bold uppercase tracking-wider', style: { color: currentCategory.color }}, currentCategory.name),
+                                    e('div', { className: 'h-px flex-1 bg-gradient-to-r from-transparent via-[#00ff41]/50 to-transparent' })
+                                ),
+                                e('div', { className: 'grid grid-cols-2 gap-4' },
+                                    ...currentTools.map(tool => {
+                                        const isActive = activeTool === tool.id;
+                                        return e('button', {
+                                            key: tool.id,
+                                            onClick: () => setActiveTool(tool.id),
+                                            className: `tool-card text-left p-5 rounded-lg border transition-all ${isActive ? 'bg-gradient-to-br from-[#00ff41]/10 to-transparent border-[#00ff41]' : 'bg-[#0f1419]/80 border-gray-800 hover:border-gray-600'}`
+                                        },
+                                            e('h3', { className: 'font-bold mb-2', style: { color: isActive ? currentCategory.color : '#e0e0e0' }}, tool.name),
+                                            e('p', { className: 'text-xs text-gray-400' }, tool.desc)
+                                        );
+                                    })
+                                )
+                            ),
+                            e('div', { className: 'terminal-border border-[#00ff41]/30 bg-[#0f1419]/80 backdrop-blur-sm rounded-lg p-6' },
+                                e(ToolInterface, { category: activeCategory, tool: activeTool, color: currentCategory.color })
+                            )
+                        )
+                    )
+                )
+            );
+        }
         function ToolInterface({ category, tool, color }) {
             const [input, setInput] = useState('');
             const [output, setOutput] = useState('');
@@ -360,4 +445,3 @@
     </script>
 </body>
 </html>
-
