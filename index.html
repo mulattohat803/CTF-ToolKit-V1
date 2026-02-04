@@ -279,7 +279,7 @@
 
             // PAYLOAD GENERATOR
             if (tool === 'payload-gen') {
-                const payloads = { sqli: ["' OR '1'='1", "admin' --", "' UNION SELECT NULL--"], xss: ["<script>alert('XSS')</script>", "<img src=x onerror=alert(1)>"], cmdi: ["; ls", "| cat /etc/passwd", "&& whoami"] };
+                const payloads = { sqli: ["' OR '1'='1", "admin' --", "' UNION SELECT NULL--"], xss: ["<script>alert('XSS')<\/script>", "<img src=x onerror=alert(1)>"], cmdi: ["; ls", "| cat /etc/passwd", "&& whoami"] };
                 const [type, setType] = useState('sqli');
                 return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Payload Generator'),
                     e('div', { className: 'grid grid-cols-3 gap-2 mb-4' }, Object.keys(payloads).map(t => e('button', { key: t, onClick: () => setType(t), className: `px-4 py-2 rounded font-bold ${type === t ? 'bg-[#00ff41]/20 border border-[#00ff41] text-[#00ff41]' : 'bg-gray-700/20 border border-gray-600 text-gray-400'}` }, t.toUpperCase()))),
