@@ -8,7 +8,6 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
@@ -49,11 +48,37 @@
     <div id="root"></div>
 
     <script>
-        const { useState } = React;
-        const { createElement: e } = React;
+        // Simple SVG icon components (no external dependency)
+        const Icon = ({ d, className = '', style = {} }) => {
+            return React.createElement('svg', {
+                className,
+                style,
+                width: '24',
+                height: '24',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2',
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round'
+            }, React.createElement('path', { d }));
+        };
 
-        // Lucide icons will be available after page loads
-        const icons = lucide;
+        const icons = {
+            Shield: (props) => Icon({ ...props, d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }),
+            Terminal: (props) => Icon({ ...props, d: 'M4 17l6-6-6-6M12 19h8' }),
+            Lock: (props) => Icon({ ...props, d: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4' }),
+            Globe: (props) => Icon({ ...props, d: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' }),
+            Eye: (props) => Icon({ ...props, d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z' }),
+            Cpu: (props) => Icon({ ...props, d: 'M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4' }),
+            Search: (props) => Icon({ ...props, d: 'M11 2a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM21 21l-4.35-4.35' }),
+            ChevronRight: (props) => Icon({ ...props, d: 'M9 18l6-6-6-6' }),
+            Zap: (props) => Icon({ ...props, d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' }),
+            Fingerprint: (props) => Icon({ ...props, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' })
+        };
+
+        const { useState } = React;
+        const e = React.createElement;
 
         function CTFToolkit() {
             const [activeCategory, setActiveCategory] = useState('crypto');
@@ -151,7 +176,7 @@
                                 e('div', { className: 'space-y-2' },
                                     ...categories.map(category => {
                                         const isActive = activeCategory === category.id;
-                                        const Icon = icons[category.icon];
+                                        const IconComponent = icons[category.icon];
                                         return e('button', {
                                             key: category.id,
                                             onClick: () => {
@@ -165,7 +190,7 @@
                                             }`,
                                             style: { borderLeftColor: isActive ? category.color : 'transparent' }
                                         },
-                                            e(Icon, { className: 'w-5 h-5', style: { color: category.color } }),
+                                            e(IconComponent, { className: 'w-5 h-5', style: { color: category.color } }),
                                             e('span', { className: 'text-sm font-medium flex-1 text-left' }, category.name),
                                             isActive && e(icons.ChevronRight, { className: 'w-4 h-4' })
                                         );
@@ -454,9 +479,14 @@
             );
         }
 
-        // Initialize icons and render
-        lucide.createIcons();
-        ReactDOM.render(React.createElement(CTFToolkit), document.getElementById('root'));
+        // Render app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                ReactDOM.render(React.createElement(CTFToolkit), document.getElementById('root'));
+            });
+        } else {
+            ReactDOM.render(React.createElement(CTFToolkit), document.getElementById('root'));
+        }
     </script>
 </body>
 </html>
