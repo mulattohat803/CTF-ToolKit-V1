@@ -5,967 +5,351 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYPHER//TOOLKIT - Professional CTF Arsenal</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            margin: 0;
-            font-family: 'JetBrains Mono', monospace;
-            overflow-x: hidden;
-        }
-        h1, h2, h3 {
-            font-family: 'Orbitron', sans-serif;
-        }
-        @keyframes gridScroll {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-        }
-        @keyframes glowPulse {
-            0%, 100% { filter: drop-shadow(0 0 8px currentColor); }
-            50% { filter: drop-shadow(0 0 16px currentColor); }
-        }
-        .glow-text {
-            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
-        }
-        .terminal-border {
-            border: 1px solid;
-            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1), 0 0 20px rgba(0, 255, 65, 0.1);
-        }
-        .tool-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .tool-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 32px rgba(0, 255, 65, 0.2);
-        }
+        body { margin: 0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden; }
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
+        @keyframes gridScroll { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
+        @keyframes glowPulse { 0%, 100% { filter: drop-shadow(0 0 8px currentColor); } 50% { filter: drop-shadow(0 0 16px currentColor); } }
+        .glow-text { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+        .terminal-border { border: 1px solid; box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1), 0 0 20px rgba(0, 255, 65, 0.1); }
+        .tool-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tool-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0, 255, 65, 0.2); }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script>
-        // Simple SVG icon components (no external dependency)
-        const Icon = ({ d, className = '', style = {} }) => {
-            return React.createElement('svg', {
-                className,
-                style,
-                width: '24',
-                height: '24',
-                viewBox: '0 0 24 24',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: '2',
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round'
-            }, React.createElement('path', { d }));
-        };
-
+        const Icon = ({ d, className = '', style = {} }) => React.createElement('svg', { className, style, width: '24', height: '24', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('path', { d }));
         const icons = {
-            Shield: (props) => Icon({ ...props, d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }),
-            Terminal: (props) => Icon({ ...props, d: 'M4 17l6-6-6-6M12 19h8' }),
-            Lock: (props) => Icon({ ...props, d: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4' }),
-            Globe: (props) => Icon({ ...props, d: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' }),
-            Eye: (props) => Icon({ ...props, d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z' }),
-            Cpu: (props) => Icon({ ...props, d: 'M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4' }),
-            Search: (props) => Icon({ ...props, d: 'M11 2a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM21 21l-4.35-4.35' }),
-            ChevronRight: (props) => Icon({ ...props, d: 'M9 18l6-6-6-6' }),
-            Zap: (props) => Icon({ ...props, d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' }),
-            Fingerprint: (props) => Icon({ ...props, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' })
+            Shield: (p) => Icon({ ...p, d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }),
+            Terminal: (p) => Icon({ ...p, d: 'M4 17l6-6-6-6M12 19h8' }),
+            Lock: (p) => Icon({ ...p, d: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4' }),
+            Globe: (p) => Icon({ ...p, d: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' }),
+            Eye: (p) => Icon({ ...p, d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z' }),
+            Cpu: (p) => Icon({ ...p, d: 'M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4' }),
+            Search: (p) => Icon({ ...p, d: 'M11 2a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM21 21l-4.35-4.35' }),
+            ChevronRight: (p) => Icon({ ...p, d: 'M9 18l6-6-6-6' }),
+            Zap: (p) => Icon({ ...p, d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' }),
+            Fingerprint: (p) => Icon({ ...p, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' }),
+            Key: (p) => Icon({ ...p, d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' })
         };
-
         const { useState } = React;
         const e = React.createElement;
-
-        function CTFToolkit() {
-            const [activeCategory, setActiveCategory] = useState('crypto');
-            const [activeTool, setActiveTool] = useState('multi-codec');
-
-            const categories = [
-                { id: 'crypto', name: 'Cryptography', icon: 'Lock', color: '#00ff41' },
-                { id: 'web', name: 'Web Exploitation', icon: 'Globe', color: '#00d9ff' },
-                { id: 'forensics', name: 'Forensics', icon: 'Eye', color: '#ff00ff' },
-                { id: 'binary', name: 'Binary/Reversing', icon: 'Cpu', color: '#ffaa00' },
-                { id: 'osint', name: 'OSINT/Recon', icon: 'Search', color: '#ff0055' }
-            ];
-
-            const tools = {
-                crypto: [
-                    { id: 'multi-codec', name: 'Multi-Codec Engine', desc: 'Advanced encoding/decoding with auto-detection' },
-                    { id: 'hash-analysis', name: 'Hash Analyzer', desc: 'Hash identification & cracking interface' },
-                    { id: 'xor-bruteforce', name: 'XOR Bruteforcer', desc: 'Multi-key XOR analysis with scoring' },
-                    { id: 'classical-cipher', name: 'Classical Cipher Lab', desc: 'Frequency analysis, substitution, Vigenère' },
-                    { id: 'rsa-toolkit', name: 'RSA Attack Toolkit', desc: 'Factor weak moduli, common attacks' }
-                ],
-                web: [
-                    { id: 'jwt-toolkit', name: 'JWT Swiss Army Knife', desc: 'Decode, verify, forge, exploit' },
-                    { id: 'payload-gen', name: 'Payload Generator', desc: 'SQLi, XSS, command injection payloads' },
-                    { id: 'request-builder', name: 'HTTP Request Builder', desc: 'Craft custom requests with headers' },
-                    { id: 'cookie-manipulator', name: 'Cookie Manipulator', desc: 'Parse, modify, encode cookies' }
-                ],
-                forensics: [
-                    { id: 'hex-editor', name: 'Hex Editor Pro', desc: 'Advanced hex viewer with search & extract' },
-                    { id: 'steg-analyzer', name: 'Steganography Analyzer', desc: 'LSB, metadata, visual filters' },
-                    { id: 'file-carver', name: 'File Carver', desc: 'Extract embedded files by signature' },
-                    { id: 'metadata-viewer', name: 'Metadata Extractor', desc: 'EXIF, PDF metadata, timestamps' }
-                ],
-                binary: [
-                    { id: 'disassembler', name: 'Disassembler', desc: 'x86/x64/ARM disassembly engine' },
-                    { id: 'shellcode-tester', name: 'Shellcode Tester', desc: 'Test and analyze shellcode' },
-                    { id: 'binary-diff', name: 'Binary Differ', desc: 'Compare binaries byte-by-byte' },
-                    { id: 'string-extractor', name: 'String Extractor', desc: 'Extract ASCII/Unicode strings' }
-                ],
-                osint: [
-                    { id: 'domain-recon', name: 'Domain Recon', desc: 'WHOIS, DNS, subdomain enumeration' },
-                    { id: 'hash-lookup', name: 'Hash Lookup', desc: 'Search leaked password databases' },
-                    { id: 'username-enum', name: 'Username Enumeration', desc: 'Check username across platforms' },
-                    { id: 'ip-intelligence', name: 'IP Intelligence', desc: 'Geolocation, ASN, threat intel' }
-                ]
-            };
-
-            const currentCategory = categories.find(c => c.id === activeCategory);
-            const currentTools = tools[activeCategory] || [];
-
-            return e('div', { className: 'min-h-screen bg-[#0a0e1a] text-[#e0e0e0] font-mono overflow-hidden' },
-                // Background grid
-                e('div', { className: 'fixed inset-0 opacity-20 pointer-events-none' },
-                    e('div', {
-                        className: 'absolute inset-0',
-                        style: {
-                            backgroundImage: 'linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px)',
-                            backgroundSize: '50px 50px',
-                            animation: 'gridScroll 20s linear infinite'
-                        }
-                    })
-                ),
-                
-                // Header
-                e('header', { className: 'relative border-b border-[#00ff41] bg-[#0a0e1a]/80 backdrop-blur-sm z-10' },
-                    e('div', { className: 'container mx-auto px-6 py-6' },
-                        e('div', { className: 'flex items-center justify-between' },
-                            e('div', { className: 'flex items-center gap-4' },
-                                e(icons.Shield, { 
-                                    className: 'w-10 h-10 text-[#00ff41]',
-                                    style: { animation: 'glowPulse 2s ease-in-out infinite' }
-                                }),
-                                e('div', null,
-                                    e('h1', { className: 'text-3xl font-bold text-[#00ff41] glow-text tracking-wider' }, 'CYPHER//TOOLKIT'),
-                                    e('p', { className: 'text-sm text-[#00ff41]/70 mt-1' }, 'Professional CTF Arsenal v2.0')
-                                )
-                            ),
-                            e('div', { className: 'flex items-center gap-2 text-[#00ff41] text-sm' },
-                                e(icons.Terminal, { className: 'w-4 h-4' }),
-                                e('span', null, 'SYSTEM READY')
-                            )
-                        )
-                    )
-                ),
-
-                e('div', { className: 'container mx-auto px-6 py-8' },
-                    e('div', { className: 'grid grid-cols-12 gap-6' },
-                        // Sidebar
-                        e('div', { className: 'col-span-3' },
-                            e('div', { className: 'terminal-border border-[#00ff41]/30 bg-[#0f1419]/80 backdrop-blur-sm rounded-lg p-4' },
-                                e('div', { className: 'flex items-center gap-2 mb-6 text-[#00ff41] text-sm font-bold' },
-                                    e(icons.Zap, { className: 'w-4 h-4' }),
-                                    e('span', null, 'CATEGORIES')
-                                ),
-                                e('div', { className: 'space-y-2' },
-                                    ...categories.map(category => {
-                                        const isActive = activeCategory === category.id;
-                                        const IconComponent = icons[category.icon];
-                                        return e('button', {
-                                            key: category.id,
-                                            onClick: () => {
-                                                setActiveCategory(category.id);
-                                                setActiveTool(tools[category.id][0].id);
-                                            },
-                                            className: `w-full flex items-center gap-3 px-4 py-3 rounded transition-all ${
-                                                isActive 
-                                                    ? 'bg-gradient-to-r from-[#00ff41]/20 to-transparent border-l-2 text-[#00ff41]' 
-                                                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
-                                            }`,
-                                            style: { borderLeftColor: isActive ? category.color : 'transparent' }
-                                        },
-                                            e(IconComponent, { className: 'w-5 h-5', style: { color: category.color } }),
-                                            e('span', { className: 'text-sm font-medium flex-1 text-left' }, category.name),
-                                            isActive && e(icons.ChevronRight, { className: 'w-4 h-4' })
-                                        );
-                                    })
-                                ),
-                                e('div', { className: 'mt-8 pt-6 border-t border-[#00ff41]/20' },
-                                    e('div', { className: 'text-xs text-gray-500 space-y-2' },
-                                        e('div', { className: 'flex justify-between' },
-                                            e('span', null, 'Tools Loaded:'),
-                                            e('span', { className: 'text-[#00ff41]' }, Object.values(tools).flat().length)
-                                        ),
-                                        e('div', { className: 'flex justify-between' },
-                                            e('span', null, 'Active Session:'),
-                                            e('span', { className: 'text-[#00d9ff]' }, new Date().toLocaleTimeString())
-                                        )
-                                    )
-                                )
-                            )
-                        ),
-
-                        // Main content
-                        e('div', { className: 'col-span-9' },
-                            e('div', { className: 'mb-6' },
-                                e('div', { className: 'flex items-center gap-3 mb-4' },
-                                    e('div', { className: 'h-px flex-1 bg-gradient-to-r from-transparent via-[#00ff41]/50 to-transparent' }),
-                                    e('h2', {
-                                        className: 'text-xl font-bold uppercase tracking-wider',
-                                        style: { color: currentCategory.color }
-                                    }, currentCategory.name),
-                                    e('div', { className: 'h-px flex-1 bg-gradient-to-r from-transparent via-[#00ff41]/50 to-transparent' })
-                                ),
-                                e('div', { className: 'grid grid-cols-2 gap-4' },
-                                    ...currentTools.map(tool => {
-                                        const isActive = activeTool === tool.id;
-                                        return e('button', {
-                                            key: tool.id,
-                                            onClick: () => setActiveTool(tool.id),
-                                            className: `tool-card text-left p-5 rounded-lg border transition-all ${
-                                                isActive
-                                                    ? 'bg-gradient-to-br from-[#00ff41]/10 to-transparent border-[#00ff41]'
-                                                    : 'bg-[#0f1419]/80 border-gray-800 hover:border-gray-600'
-                                            }`
-                                        },
-                                            e('h3', {
-                                                className: 'font-bold mb-2',
-                                                style: { color: isActive ? currentCategory.color : '#e0e0e0' }
-                                            }, tool.name),
-                                            e('p', { className: 'text-xs text-gray-400' }, tool.desc)
-                                        );
-                                    })
-                                )
-                            ),
-                            e('div', { className: 'terminal-border border-[#00ff41]/30 bg-[#0f1419]/80 backdrop-blur-sm rounded-lg p-6' },
-                                e(ToolInterface, { category: activeCategory, tool: activeTool, color: currentCategory.color })
-                            )
-                        )
-                    )
-                )
-            );
-        }
-
+        <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYPHER//TOOLKIT - Professional CTF Arsenal</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden; }
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
+        @keyframes gridScroll { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
+        @keyframes glowPulse { 0%, 100% { filter: drop-shadow(0 0 8px currentColor); } 50% { filter: drop-shadow(0 0 16px currentColor); } }
+        .glow-text { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+        .terminal-border { border: 1px solid; box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1), 0 0 20px rgba(0, 255, 65, 0.1); }
+        .tool-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tool-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0, 255, 65, 0.2); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        const Icon = ({ d, className = '', style = {} }) => React.createElement('svg', { className, style, width: '24', height: '24', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('path', { d }));
+        const icons = {
+            Shield: (p) => Icon({ ...p, d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }),
+            Terminal: (p) => Icon({ ...p, d: 'M4 17l6-6-6-6M12 19h8' }),
+            Lock: (p) => Icon({ ...p, d: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4' }),
+            Globe: (p) => Icon({ ...p, d: 'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' }),
+            Eye: (p) => Icon({ ...p, d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z' }),
+            Cpu: (p) => Icon({ ...p, d: 'M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4' }),
+            Search: (p) => Icon({ ...p, d: 'M11 2a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM21 21l-4.35-4.35' }),
+            ChevronRight: (p) => Icon({ ...p, d: 'M9 18l6-6-6-6' }),
+            Zap: (p) => Icon({ ...p, d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' }),
+            Fingerprint: (p) => Icon({ ...p, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' }),
+            Key: (p) => Icon({ ...p, d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' })
+        };
+        const { useState } = React;
+        const e = React.createElement;
         function ToolInterface({ category, tool, color }) {
             const [input, setInput] = useState('');
             const [output, setOutput] = useState('');
 
-            // Multi-Codec Tool
+            // MULTI-CODEC ENGINE
             if (tool === 'multi-codec') {
                 const [detectedEncoding, setDetectedEncoding] = useState('');
-                
                 const encodings = [
                     { id: 'base64', name: 'Base64', encode: (s) => btoa(s), decode: (s) => atob(s) },
-                    { id: 'hex', name: 'Hexadecimal', 
-                        encode: (s) => Array.from(s).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(''),
-                        decode: (s) => s.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join('')
-                    },
-                    { id: 'url', name: 'URL Encoding', encode: encodeURIComponent, decode: decodeURIComponent },
-                    { id: 'rot13', name: 'ROT13', 
-                        encode: (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13))),
-                        decode: (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13)))
-                    },
-                    { id: 'binary', name: 'Binary',
-                        encode: (s) => s.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '),
-                        decode: (s) => s.split(' ').map(b => String.fromCharCode(parseInt(b, 2))).join('')
-                    }
+                    { id: 'hex', name: 'Hex', encode: (s) => Array.from(s).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(''), decode: (s) => s.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join('') },
+                    { id: 'url', name: 'URL', encode: encodeURIComponent, decode: decodeURIComponent },
+                    { id: 'rot13', name: 'ROT13', encode: (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13))), decode: (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13))) },
+                    { id: 'binary', name: 'Binary', encode: (s) => s.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '), decode: (s) => s.split(' ').map(b => String.fromCharCode(parseInt(b, 2))).join('') },
+                    { id: 'morse', name: 'Morse', encode: (s) => { const m = {'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---','K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-','U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.', ' ':'/'}; return s.toUpperCase().split('').map(c => m[c] || c).join(' '); }, decode: (s) => { const m = {'.-':'A','-...':'B','-.-.':'C','-..':'D','.':'E','..-.':'F','--.':'G','....':'H','..':'I','.---':'J','-.-':'K','.-..':'L','--':'M','-.':'N','---':'O','.--.':'P','--.-':'Q','.-.':'R','...':'S','-':'T','..-':'U','...-':'V','.--':'W','-..-':'X','-.--':'Y','--..':'Z','-----':'0','.----':'1','..---':'2','...--':'3','....-':'4','.....':'5','-....':'6','--...':'7','---..':'8','----.':'9','/':' '}; return s.split(' ').map(m => m[m] || m).join(''); }}
                 ];
-
-                const detectEncoding = (str) => {
-                    if (/^[A-Za-z0-9+/]+=*$/.test(str) && str.length % 4 === 0) return 'base64';
-                    if (/^[0-9a-fA-F]+$/.test(str)) return 'hex';
-                    if (/%[0-9A-F]{2}/.test(str)) return 'url';
-                    if (/^[01\s]+$/.test(str)) return 'binary';
-                    return 'unknown';
-                };
-
-                const handleEncode = (encoding) => {
-                    try {
-                        const encoded = encodings.find(e => e.id === encoding).encode(input);
-                        setOutput(encoded);
-                    } catch (err) {
-                        setOutput('Error: ' + err.message);
-                    }
-                };
-
-                const handleDecode = (encoding) => {
-                    try {
-                        const decoded = encodings.find(e => e.id === encoding).decode(input);
-                        setOutput(decoded);
-                    } catch (err) {
-                        setOutput('Error: ' + err.message);
-                    }
-                };
-
-                const autoDetect = () => {
-                    const detected = detectEncoding(input);
-                    setDetectedEncoding(detected);
-                    if (detected !== 'unknown') {
-                        handleDecode(detected);
-                    } else {
-                        setOutput('Unable to auto-detect encoding');
-                    }
-                };
-
+                const detectEncoding = (str) => { if (/^[A-Za-z0-9+/]+=*$/.test(str) && str.length % 4 === 0) return 'base64'; if (/^[0-9a-fA-F]+$/.test(str)) return 'hex'; if (/%[0-9A-F]{2}/.test(str)) return 'url'; if (/^[01\s]+$/.test(str)) return 'binary'; if (/^[.-\/\s]+$/.test(str)) return 'morse'; return 'unknown'; };
+                const handleEncode = (enc) => { try { setOutput(encodings.find(e => e.id === enc).encode(input)); } catch(err) { setOutput('Error: ' + err.message); }};
+                const handleDecode = (enc) => { try { setOutput(encodings.find(e => e.id === enc).decode(input)); } catch(err) { setOutput('Error: ' + err.message); }};
+                const autoDetect = () => { const d = detectEncoding(input); setDetectedEncoding(d); if (d !== 'unknown') handleDecode(d); else setOutput('Unable to detect'); };
                 return e('div', { className: 'space-y-4' },
                     e('div', { className: 'flex items-center justify-between mb-4' },
-                        e('h3', { className: 'text-lg font-bold', style: { color } }, 'Multi-Codec Engine'),
-                        e('button', {
-                            onClick: autoDetect,
-                            className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] text-sm font-bold transition-all'
-                        },
-                            e(icons.Fingerprint, { className: 'w-4 h-4 inline mr-2' }),
-                            'AUTO-DETECT'
-                        )
+                        e('h3', { className: 'text-lg font-bold', style: { color }}, 'Multi-Codec Engine'),
+                        e('button', { onClick: autoDetect, className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] text-sm font-bold'}, e(icons.Fingerprint, { className: 'w-4 h-4 inline mr-2' }), 'AUTO-DETECT')
                     ),
-                    detectedEncoding && detectedEncoding !== 'unknown' && e('div', {
-                        className: 'bg-[#00ff41]/10 border border-[#00ff41]/30 rounded p-3 text-sm'
-                    },
-                        e('strong', { className: 'text-[#00ff41]' }, 'Detected: '),
-                        detectedEncoding.toUpperCase()
-                    ),
+                    detectedEncoding && detectedEncoding !== 'unknown' && e('div', { className: 'bg-[#00ff41]/10 border border-[#00ff41]/30 rounded p-3 text-sm' }, e('strong', { className: 'text-[#00ff41]' }, 'Detected: '), detectedEncoding.toUpperCase()),
                     e('div', { className: 'grid grid-cols-2 gap-4' },
-                        e('div', null,
-                            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'INPUT'),
-                            e('textarea', {
-                                value: input,
-                                onChange: (ev) => setInput(ev.target.value),
-                                className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-                                placeholder: 'Enter text to encode/decode...'
-                            })
-                        ),
-                        e('div', null,
-                            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'),
-                            e('textarea', {
-                                value: output,
-                                readOnly: true,
-                                className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none',
-                                placeholder: 'Output will appear here...'
-                            })
-                        )
+                        e('div', null, e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'INPUT'), e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Enter text...' })),
+                        e('div', null, e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'), e('textarea', { value: output, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none', placeholder: 'Output...' }))
                     ),
-                    e('div', { className: 'grid grid-cols-3 gap-2' },
-                        ...encodings.map(enc => 
-                            e('div', { key: enc.id, className: 'flex gap-2' },
-                                e('button', {
-                                    onClick: () => handleEncode(enc.id),
-                                    className: 'flex-1 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500 rounded text-xs font-bold transition-all'
-                                }, `→ ${enc.name}`),
-                                e('button', {
-                                    onClick: () => handleDecode(enc.id),
-                                    className: 'flex-1 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500 rounded text-xs font-bold transition-all'
-                                }, `← ${enc.name}`)
-                            )
-                        )
-                    )
+                    e('div', { className: 'grid grid-cols-3 gap-2' }, ...encodings.map(enc => e('div', { key: enc.id, className: 'flex gap-2' }, e('button', { onClick: () => handleEncode(enc.id), className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, `→ ${enc.name}`), e('button', { onClick: () => handleDecode(enc.id), className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, `← ${enc.name}`))))
                 );
             }
 
-            // Hash Analyzer
+            // HASH ANALYZER
             if (tool === 'hash-analysis') {
                 const [hashInfo, setHashInfo] = useState(null);
-
-                const hashPatterns = [
-                    { name: 'MD5', regex: /^[a-f0-9]{32}$/i, length: 32 },
-                    { name: 'SHA-1', regex: /^[a-f0-9]{40}$/i, length: 40 },
-                    { name: 'SHA-256', regex: /^[a-f0-9]{64}$/i, length: 64 },
-                    { name: 'SHA-512', regex: /^[a-f0-9]{128}$/i, length: 128 }
-                ];
-
-                const analyzeHash = () => {
-                    const trimmed = input.trim();
-                    const matches = hashPatterns.filter(p => p.regex.test(trimmed));
-                    
-                    if (matches.length > 0) {
-                        setHashInfo({
-                            length: trimmed.length,
-                            possibleTypes: matches.map(m => m.name)
-                        });
-                        setOutput(`Identified: ${matches.map(m => m.name).join(' or ')}\nLength: ${trimmed.length} characters`);
-                    } else {
-                        setOutput('Unable to identify hash type. Please verify the hash format.');
-                    }
-                };
-
-                const generateHash = (algorithm) => {
-                    try {
-                        let hash;
-                        switch(algorithm) {
-                            case 'MD5': hash = CryptoJS.MD5(input).toString(); break;
-                            case 'SHA-1': hash = CryptoJS.SHA1(input).toString(); break;
-                            case 'SHA-256': hash = CryptoJS.SHA256(input).toString(); break;
-                            case 'SHA-512': hash = CryptoJS.SHA512(input).toString(); break;
-                            default: hash = 'Unknown algorithm';
-                        }
-                        setOutput(hash);
-                    } catch (err) {
-                        setOutput('Error: ' + err.message);
-                    }
-                };
-
+                const hashPatterns = [{ name: 'MD5', regex: /^[a-f0-9]{32}$/i }, { name: 'SHA-1', regex: /^[a-f0-9]{40}$/i }, { name: 'SHA-256', regex: /^[a-f0-9]{64}$/i }, { name: 'SHA-512', regex: /^[a-f0-9]{128}$/i }];
+                const analyzeHash = () => { const t = input.trim(); const m = hashPatterns.filter(p => p.regex.test(t)); if (m.length > 0) { setHashInfo({ length: t.length, possibleTypes: m.map(x => x.name) }); setOutput(`Identified: ${m.map(x => x.name).join(' or ')}\nLength: ${t.length}`); } else { setOutput('Unknown hash type'); }};
+                const generateHash = (algo) => { try { let h; switch(algo) { case 'MD5': h = CryptoJS.MD5(input).toString(); break; case 'SHA-1': h = CryptoJS.SHA1(input).toString(); break; case 'SHA-256': h = CryptoJS.SHA256(input).toString(); break; case 'SHA-512': h = CryptoJS.SHA512(input).toString(); break; } setOutput(h); } catch(e) { setOutput('Error'); }};
                 return e('div', { className: 'space-y-4' },
-                    e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'Hash Analysis & Generation'),
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Hash Analyzer'),
                     e('div', { className: 'grid grid-cols-2 gap-4' },
-                        e('div', null,
-                            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'INPUT'),
-                            e('textarea', {
-                                value: input,
-                                onChange: (ev) => setInput(ev.target.value),
-                                className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-                                placeholder: 'Enter hash to analyze or text to hash...'
-                            })
-                        ),
-                        e('div', null,
-                            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'),
-                            e('textarea', {
-                                value: output,
-                                readOnly: true,
-                                className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none',
-                                placeholder: 'Results will appear here...'
-                            })
-                        )
+                        e('div', null, e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'INPUT'), e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' })),
+                        e('div', null, e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'), e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }))
                     ),
                     e('div', { className: 'flex gap-4' },
-                        e('div', { className: 'flex-1' },
-                            e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'ANALYZE HASH'),
-                            e('button', {
-                                onClick: analyzeHash,
-                                className: 'w-full px-4 py-3 bg-[#ff00ff]/20 hover:bg-[#ff00ff]/30 border border-[#ff00ff] rounded text-[#ff00ff] font-bold transition-all'
-                            },
-                                e(icons.Eye, { className: 'w-4 h-4 inline mr-2' }),
-                                'IDENTIFY HASH TYPE'
-                            )
-                        ),
-                        e('div', { className: 'flex-1' },
-                            e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'GENERATE HASH'),
-                            e('div', { className: 'grid grid-cols-2 gap-2' },
-                                ['MD5', 'SHA-1', 'SHA-256', 'SHA-512'].map(algo =>
-                                    e('button', {
-                                        key: algo,
-                                        onClick: () => generateHash(algo),
-                                        className: 'px-3 py-2 bg-[#00d9ff]/20 hover:bg-[#00d9ff]/30 border border-[#00d9ff] rounded text-xs font-bold transition-all'
-                                    }, algo)
-                                )
-                            )
-                        )
+                        e('div', { className: 'flex-1' }, e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'ANALYZE'), e('button', { onClick: analyzeHash, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, e(icons.Eye, { className: 'w-4 h-4 inline mr-2' }), 'IDENTIFY')),
+                        e('div', { className: 'flex-1' }, e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'GENERATE'), e('div', { className: 'grid grid-cols-2 gap-2' }, ['MD5', 'SHA-1', 'SHA-256', 'SHA-512'].map(a => e('button', { key: a, onClick: () => generateHash(a), className: 'px-3 py-2 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-xs font-bold' }, a))))
                     ),
-                    hashInfo && e('div', { className: 'bg-[#00ff41]/10 border border-[#00ff41]/30 rounded p-4' },
-                        e('h4', { className: 'text-sm font-bold mb-2 text-[#00ff41]' }, 'HASH INTELLIGENCE'),
-                        e('div', { className: 'space-y-1 text-sm font-mono' },
-                            e('div', null,
-                                e('span', { className: 'text-gray-400' }, 'Possible Types: '),
-                                hashInfo.possibleTypes.join(', ')
-                            ),
-                            e('div', null,
-                                e('span', { className: 'text-gray-400' }, 'Length: '),
-                                `${hashInfo.length} chars`
-                            )
-                        )
-                    )
+                    hashInfo && e('div', { className: 'bg-[#00ff41]/10 border border-[#00ff41]/30 rounded p-4' }, e('h4', { className: 'text-sm font-bold mb-2 text-[#00ff41]' }, 'INFO'), e('div', { className: 'text-sm font-mono' }, e('div', null, 'Types: ', hashInfo.possibleTypes.join(', ')), e('div', null, 'Length: ', hashInfo.length)))
                 );
             }
 
-            // Default placeholder for other tools
-
-// ========================================
-// ADDITIONAL TOOLS FOR CYPHER//TOOLKIT
-// ========================================
-// Copy these tool implementations into your ToolInterface function
-// Add them right after the existing hash-analysis tool
-
-// XOR BRUTEFORCE TOOL
-if (tool === 'xor-bruteforce') {
-    const [results, setResults] = useState([]);
-
-    const xorBruteforce = () => {
-        const data = input;
-        const resultList = [];
-        
-        for (let key = 0; key < 256; key++) {
-            let decoded = '';
-            let score = 0;
-            
-            for (let i = 0; i < data.length; i++) {
-                const char = data.charCodeAt(i) ^ key;
-                decoded += String.fromCharCode(char);
-                
-                if (char >= 32 && char <= 126) score += 1;
-                if ('etaoinshrdlu'.includes(String.fromCharCode(char).toLowerCase())) score += 2;
+            // XOR BRUTEFORCE
+            if (tool === 'xor-bruteforce') {
+                const [results, setResults] = useState([]);
+                const xorBruteforce = () => { const r = []; for (let k = 0; k < 256; k++) { let d = '', s = 0; for (let i = 0; i < input.length; i++) { const c = input.charCodeAt(i) ^ k; d += String.fromCharCode(c); if (c >= 32 && c <= 126) s += 1; if ('etaoinshrdlu'.includes(String.fromCharCode(c).toLowerCase())) s += 2; } r.push({ key: k.toString(16).padStart(2, '0'), keyDec: k, score: s, preview: d.substring(0, 80) }); } r.sort((a, b) => b.score - a.score); setResults(r.slice(0, 15)); setOutput('Top 15 results'); };
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'XOR Bruteforce'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }),
+                    e('button', { onClick: xorBruteforce, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, e(icons.Zap, { className: 'w-4 h-4 inline mr-2' }), 'BRUTEFORCE (0x00-0xFF)'),
+                    results.length > 0 && e('div', { className: 'bg-black/50 border border-gray-700 rounded p-4 max-h-80 overflow-y-auto' }, e('div', { className: 'space-y-2' }, ...results.map((r, i) => e('div', { key: i, className: 'bg-[#0f1419] border border-gray-800 rounded p-3 hover:border-[#00ff41]/50 cursor-pointer', onClick: () => setOutput(r.preview) }, e('div', { className: 'flex justify-between mb-1' }, e('span', { className: 'text-[#00ff41] text-xs font-bold' }, `Key: 0x${r.key} (${r.keyDec})`), e('span', { className: 'text-gray-400 text-xs' }, `Score: ${r.score}`)), e('div', { className: 'text-xs font-mono text-gray-300 truncate' }, r.preview))))),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
             }
-            
-            resultList.push({
-                key: key.toString(16).padStart(2, '0'),
-                keyDec: key,
-                score,
-                preview: decoded.substring(0, 80)
-            });
-        }
-        
-        resultList.sort((a, b) => b.score - a.score);
-        setResults(resultList.slice(0, 15));
-        setOutput('Top 15 results sorted by scoring. Click a result to view full output.');
-    };
-
-    return e('div', { className: 'space-y-4' },
-        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'XOR Bruteforce Attack'),
-        e('div', null,
-            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'ENCRYPTED DATA'),
-            e('textarea', {
-                value: input,
-                onChange: (ev) => setInput(ev.target.value),
-                className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-                placeholder: 'Enter encrypted data...'
-            })
-        ),
-        e('button', {
-            onClick: xorBruteforce,
-            className: 'w-full px-4 py-3 bg-[#ff00ff]/20 hover:bg-[#ff00ff]/30 border border-[#ff00ff] rounded text-[#ff00ff] font-bold transition-all'
-        },
-            e(icons.Zap, { className: 'w-4 h-4 inline mr-2' }),
-            'BRUTEFORCE ALL KEYS (0x00-0xFF)'
-        ),
-        results.length > 0 && e('div', { className: 'bg-black/50 border border-gray-700 rounded p-4' },
-            e('h4', { className: 'text-sm font-bold mb-3 text-[#00ff41]' }, 'TOP CANDIDATES'),
-            e('div', { className: 'space-y-2 max-h-80 overflow-y-auto' },
-                ...results.map((result, idx) =>
-                    e('div', {
-                        key: idx,
-                        className: 'bg-[#0f1419] border border-gray-800 rounded p-3 hover:border-[#00ff41]/50 transition-colors cursor-pointer',
-                        onClick: () => setOutput(result.preview)
-                    },
-                        e('div', { className: 'flex justify-between mb-1' },
-                            e('span', { className: 'text-[#00ff41] font-bold text-xs' }, 
-                                `Key: 0x${result.key} (${result.keyDec})`
-                            ),
-                            e('span', { className: 'text-gray-400 text-xs' }, `Score: ${result.score}`)
-                        ),
-                        e('div', { className: 'text-xs font-mono text-gray-300 truncate' }, result.preview)
-                    )
-                )
-            )
-        ),
-        e('div', null,
-            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'SELECTED OUTPUT'),
-            e('textarea', {
-                value: output,
-                readOnly: true,
-                className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none',
-                placeholder: 'Click on a candidate to view full output...'
-            })
-        )
-    );
-}
-
-// CLASSICAL CIPHER LAB
-if (tool === 'classical-cipher') {
-    const [shift, setShift] = useState(13);
-    const [keyword, setKeyword] = useState('');
-
-    const caesarCipher = (text, shift, decrypt = false) => {
-        const s = decrypt ? (26 - (shift % 26)) : (shift % 26);
-        return text.replace(/[a-zA-Z]/g, c => {
-            const base = c <= 'Z' ? 65 : 97;
-            return String.fromCharCode(((c.charCodeAt(0) - base + s) % 26) + base);
-        });
-    };
-
-    const vigenereCipher = (text, key, decrypt = false) => {
-        let result = '';
-        let keyIndex = 0;
-        const upperKey = key.toUpperCase();
-        
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            if (/[a-zA-Z]/.test(char)) {
-                const base = char <= 'Z' ? 65 : 97;
-                const charCode = char.toUpperCase().charCodeAt(0) - 65;
-                const keyCode = upperKey.charCodeAt(keyIndex % upperKey.length) - 65;
-                const shifted = decrypt ? (charCode - keyCode + 26) % 26 : (charCode + keyCode) % 26;
-                result += String.fromCharCode(shifted + base);
-                keyIndex++;
-            } else {
-                result += char;
+            // CLASSICAL CIPHER
+            if (tool === 'classical-cipher') {
+                const [shift, setShift] = useState(13); const [keyword, setKeyword] = useState('');
+                const caesarCipher = (text, s, d = false) => { const sh = d ? (26 - (s % 26)) : (s % 26); return text.replace(/[a-zA-Z]/g, c => { const b = c <= 'Z' ? 65 : 97; return String.fromCharCode(((c.charCodeAt(0) - b + sh) % 26) + b); }); };
+                const vigenereCipher = (text, key, d = false) => { let res = '', ki = 0; const uk = key.toUpperCase(); for (let i = 0; i < text.length; i++) { const c = text[i]; if (/[a-zA-Z]/.test(c)) { const b = c <= 'Z' ? 65 : 97; const cc = c.toUpperCase().charCodeAt(0) - 65; const kc = uk.charCodeAt(ki % uk.length) - 65; const sh = d ? (cc - kc + 26) % 26 : (cc + kc) % 26; res += String.fromCharCode(sh + b); ki++; } else { res += c; }} return res; };
+                const freqAnalysis = (t) => { const f = {}; const l = t.toUpperCase().replace(/[^A-Z]/g, ''); for (let c of l) { f[c] = (f[c] || 0) + 1; } const s = Object.entries(f).sort((a, b) => b[1] - a[1]); return s.slice(0, 10).map(([c, n]) => `${c}: ${n} (${(n/l.length*100).toFixed(1)}%)`).join('\n'); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Classical Cipher Lab'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }), e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })),
+                    e('div', { className: 'grid grid-cols-2 gap-4' },
+                        e('div', null, e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'CAESAR'), e('input', { type: 'number', value: shift, onChange: (ev) => setShift(parseInt(ev.target.value) || 0), min: 0, max: 25, className: 'w-20 px-3 py-2 mb-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }), e('div', { className: 'flex gap-2' }, e('button', { onClick: () => setOutput(caesarCipher(input, shift)), className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'ENC'), e('button', { onClick: () => setOutput(caesarCipher(input, shift, true)), className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'DEC'))),
+                        e('div', null, e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'VIGENÈRE'), e('input', { type: 'text', value: keyword, onChange: (ev) => setKeyword(ev.target.value), className: 'w-full px-3 py-2 mb-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }), e('div', { className: 'flex gap-2' }, e('button', { onClick: () => keyword && setOutput(vigenereCipher(input, keyword)), className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'ENC'), e('button', { onClick: () => keyword && setOutput(vigenereCipher(input, keyword, true)), className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'DEC')))
+                    ),
+                    e('button', { onClick: () => setOutput(freqAnalysis(input)), className: 'w-full px-4 py-3 bg-[#00ff41]/20 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'FREQUENCY ANALYSIS')
+                );
             }
-        }
-        return result;
-    };
 
-    const frequencyAnalysis = (text) => {
-        const freq = {};
-        const letters = text.toUpperCase().replace(/[^A-Z]/g, '');
-        for (let char of letters) {
-            freq[char] = (freq[char] || 0) + 1;
-        }
-        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-        return sorted.slice(0, 10).map(([char, count]) => 
-            `${char}: ${count} (${(count/letters.length*100).toFixed(1)}%)`
-        ).join('\n');
-    };
-
-    return e('div', { className: 'space-y-4' },
-        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'Classical Cipher Laboratory'),
-        e('div', { className: 'grid grid-cols-2 gap-4' },
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'INPUT TEXT'),
-                e('textarea', {
-                    value: input,
-                    onChange: (ev) => setInput(ev.target.value),
-                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-                    placeholder: 'Enter text...'
-                })
-            ),
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'),
-                e('textarea', {
-                    value: output,
-                    readOnly: true,
-                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none',
-                    placeholder: 'Results...'
-                })
-            )
-        ),
-        e('div', { className: 'grid grid-cols-2 gap-4' },
-            e('div', null,
-                e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'CAESAR CIPHER'),
-                e('div', { className: 'flex gap-2 mb-2' },
-                    e('input', {
-                        type: 'number',
-                        value: shift,
-                        onChange: (ev) => setShift(parseInt(ev.target.value) || 0),
-                        min: 0,
-                        max: 25,
-                        className: 'w-20 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none'
-                    }),
-                    e('span', { className: 'flex items-center text-sm text-gray-400' }, 'shift')
-                ),
-                e('div', { className: 'flex gap-2' },
-                    e('button', {
-                        onClick: () => setOutput(caesarCipher(input, shift, false)),
-                        className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold'
-                    }, 'ENCRYPT'),
-                    e('button', {
-                        onClick: () => setOutput(caesarCipher(input, shift, true)),
-                        className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold'
-                    }, 'DECRYPT')
-                )
-            ),
-            e('div', null,
-                e('h4', { className: 'text-sm font-bold mb-2 text-gray-400' }, 'VIGENÈRE'),
-                e('input', {
-                    type: 'text',
-                    value: keyword,
-                    onChange: (ev) => setKeyword(ev.target.value),
-                    className: 'w-full px-3 py-2 mb-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
-                    placeholder: 'Keyword'
-                }),
-                e('div', { className: 'flex gap-2' },
-                    e('button', {
-                        onClick: () => keyword && setOutput(vigenereCipher(input, keyword, false)),
-                        className: 'flex-1 px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold'
-                    }, 'ENCRYPT'),
-                    e('button', {
-                        onClick: () => keyword && setOutput(vigenereCipher(input, keyword, true)),
-                        className: 'flex-1 px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold'
-                    }, 'DECRYPT')
-                )
-            )
-        ),
-        e('button', {
-            onClick: () => setOutput(frequencyAnalysis(input)),
-            className: 'w-full px-4 py-3 bg-[#00ff41]/20 border border-[#00ff41] rounded text-[#00ff41] font-bold'
-        }, 'FREQUENCY ANALYSIS')
-    );
-}
-
-// RSA CALCULATOR
-if (tool === 'rsa-toolkit') {
-    const [n, setN] = useState('');
-    const [e, setE] = useState('65537');
-    const [p, setP] = useState('');
-    const [q, setQ] = useState('');
-
-    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-    const modInverse = (a, m) => {
-        let [old_r, r] = [a, m];
-        let [old_s, s] = [1, 0];
-        while (r !== 0) {
-            const quotient = Math.floor(old_r / r);
-            [old_r, r] = [r, old_r - quotient * r];
-            [old_s, s] = [s, old_s - quotient * s];
-        }
-        return old_s < 0 ? old_s + m : old_s;
-    };
-
-    const factorSmallN = () => {
-        const modulus = parseInt(n);
-        if (isNaN(modulus) || modulus < 4) {
-            setOutput('Invalid modulus');
-            return;
-        }
-        for (let i = 2; i <= Math.sqrt(modulus); i++) {
-            if (modulus % i === 0) {
-                const p_val = i;
-                const q_val = modulus / i;
-                setP(p_val.toString());
-                setQ(q_val.toString());
-                setOutput(`Factored!\np = ${p_val}\nq = ${q_val}`);
-                return;
+            // RSA CALCULATOR
+            if (tool === 'rsa-toolkit') {
+                const [n, setN] = useState(''); const [e, setE] = useState('65537'); const [p, setP] = useState(''); const [q, setQ] = useState('');
+                const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+                const modInverse = (a, m) => { let [or, r] = [a, m]; let [os, s] = [1, 0]; while (r !== 0) { const q = Math.floor(or / r); [or, r] = [r, or - q * r]; [os, s] = [s, os - q * s]; } return os < 0 ? os + m : os; };
+                const factorN = () => { const mod = parseInt(n); if (isNaN(mod) || mod < 4) { setOutput('Invalid'); return; } for (let i = 2; i <= Math.sqrt(mod); i++) { if (mod % i === 0) { setP(i.toString()); setQ((mod/i).toString()); setOutput(`p = ${i}\nq = ${mod/i}`); return; }} setOutput('Cannot factor'); };
+                const calcPrivate = () => { const pv = parseInt(p), qv = parseInt(q), ev = parseInt(e); if (isNaN(pv) || isNaN(qv) || isNaN(ev)) { setOutput('Invalid'); return; } const nc = pv * qv; const phi = (pv - 1) * (qv - 1); if (gcd(ev, phi) !== 1) { setOutput('e and φ(n) not coprime'); return; } const d = modInverse(ev, phi); setN(nc.toString()); setOutput(`n = ${nc}\nφ(n) = ${phi}\nd = ${d}`); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'RSA Calculator'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('input', { type: 'text', value: n, onChange: (ev) => setN(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'n' }), e('input', { type: 'text', value: e, onChange: (ev) => setE(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'e' })),
+                    e('button', { onClick: factorN, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'FACTOR n'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('input', { type: 'text', value: p, onChange: (ev) => setP(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'p' }), e('input', { type: 'text', value: q, onChange: (ev) => setQ(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'q' })),
+                    e('button', { onClick: calcPrivate, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, 'CALC PRIVATE KEY'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
             }
-        }
-        setOutput('Could not factor (too large or prime)');
-    };
 
-    const calculatePrivateKey = () => {
-        const p_val = parseInt(p);
-        const q_val = parseInt(q);
-        const e_val = parseInt(e);
-        
-        if (isNaN(p_val) || isNaN(q_val) || isNaN(e_val)) {
-            setOutput('Invalid values');
-            return;
-        }
-        
-        const n_calc = p_val * q_val;
-        const phi = (p_val - 1) * (q_val - 1);
-        
-        if (gcd(e_val, phi) !== 1) {
-            setOutput('e and φ(n) are not coprime!');
-            return;
-        }
-        
-        const d = modInverse(e_val, phi);
-        setN(n_calc.toString());
-        setOutput(`n = ${n_calc}\nφ(n) = ${phi}\nd (private) = ${d}`);
-    };
-
-    return e('div', { className: 'space-y-4' },
-        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'RSA Calculator'),
-        e('div', { className: 'grid grid-cols-2 gap-4' },
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'n'),
-                e('input', {
-                    type: 'text',
-                    value: n,
-                    onChange: (ev) => setN(ev.target.value),
-                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
-                    placeholder: 'n = p × q'
-                })
-            ),
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'e'),
-                e('input', {
-                    type: 'text',
-                    value: e,
-                    onChange: (ev) => setE(ev.target.value),
-                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
-                    placeholder: '65537'
-                })
-            )
-        ),
-        e('button', {
-            onClick: factorSmallN,
-            className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold'
-        }, 'FACTOR n (small values only)'),
-        e('div', { className: 'grid grid-cols-2 gap-4' },
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'p'),
-                e('input', {
-                    type: 'text',
-                    value: p,
-                    onChange: (ev) => setP(ev.target.value),
-                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
-                    placeholder: 'Prime p'
-                })
-            ),
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'q'),
-                e('input', {
-                    type: 'text',
-                    value: q,
-                    onChange: (ev) => setQ(ev.target.value),
-                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
-                    placeholder: 'Prime q'
-                })
-            )
-        ),
-        e('button', {
-            onClick: calculatePrivateKey,
-            className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold'
-        }, 'CALCULATE PRIVATE KEY'),
-        e('div', null,
-            e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'OUTPUT'),
-            e('textarea', {
-                value: output,
-                readOnly: true,
-                className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none'
-            })
-        )
-    );
-}
-
-// JWT TOOLKIT
-if (tool === 'jwt-toolkit') {
-    const [decodedHeader, setDecodedHeader] = useState('');
-    const [decodedPayload, setDecodedPayload] = useState('');
-    const [signature, setSignature] = useState('');
-
-    const decodeJWT = () => {
-        try {
-            const parts = input.split('.');
-            if (parts.length !== 3) {
-                setOutput('Invalid JWT format');
-                return;
+            // JWT TOOLKIT
+            if (tool === 'jwt-toolkit') {
+                const [dh, setDh] = useState(''); const [dp, setDp] = useState(''); const [sig, setSig] = useState('');
+                const decodeJWT = () => { try { const parts = input.split('.'); if (parts.length !== 3) { setOutput('Invalid JWT'); return; } const h = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'))); const p = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))); setDh(JSON.stringify(h, null, 2)); setDp(JSON.stringify(p, null, 2)); setSig(parts[2]); setOutput('Decoded'); } catch(e) { setOutput('Error: ' + e.message); }};
+                const forgeJWT = () => { try { const h = JSON.parse(dh); const p = JSON.parse(dp); const b64url = (s) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); const nh = b64url(JSON.stringify(h)); const np = b64url(JSON.stringify(p)); setOutput(`${nh}.${np}.${sig}`); } catch(e) { setOutput('Error'); }};
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'JWT Swiss Army Knife'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-20 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Paste JWT...' }),
+                    e('button', { onClick: decodeJWT, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, e(icons.Key, { className: 'w-4 h-4 inline mr-2' }), 'DECODE'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('textarea', { value: dh, onChange: (ev) => setDh(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Header' }), e('textarea', { value: dp, onChange: (ev) => setDp(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Payload' })),
+                    e('input', { type: 'text', value: sig, onChange: (ev) => setSig(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'Signature' }),
+                    e('button', { onClick: forgeJWT, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'FORGE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
             }
-            const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-            setDecodedHeader(JSON.stringify(header, null, 2));
-            setDecodedPayload(JSON.stringify(payload, null, 2));
-            setSignature(parts[2]);
-            setOutput('JWT decoded. Modify and forge below.');
-        } catch (err) {
-            setOutput('Error: ' + err.message);
+
+            // PAYLOAD GENERATOR
+            if (tool === 'payload-gen') {
+                const payloads = { sqli: ["' OR '1'='1", "admin' --", "' UNION SELECT NULL--"], xss: ["<script>alert('XSS')</script>", "<img src=x onerror=alert(1)>"], cmdi: ["; ls", "| cat /etc/passwd", "&& whoami"] };
+                const [type, setType] = useState('sqli');
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Payload Generator'),
+                    e('div', { className: 'grid grid-cols-3 gap-2 mb-4' }, Object.keys(payloads).map(t => e('button', { key: t, onClick: () => setType(t), className: `px-4 py-2 rounded font-bold ${type === t ? 'bg-[#00ff41]/20 border border-[#00ff41] text-[#00ff41]' : 'bg-gray-700/20 border border-gray-600 text-gray-400'}` }, t.toUpperCase()))),
+                    e('div', { className: 'bg-black/50 border border-gray-700 rounded p-4 max-h-96 overflow-y-auto' }, e('div', { className: 'space-y-2' }, ...payloads[type].map((p, i) => e('div', { key: i, className: 'bg-[#0f1419] border border-gray-800 rounded p-3 hover:border-[#00ff41]/50 cursor-pointer', onClick: () => setInput(p) }, e('code', { className: 'text-xs text-gray-300' }, p))))),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' })
+                );
+            }
+
+            // URL PARSER
+            if (tool === 'url-parser') {
+                const parseURL = () => { try { const url = new URL(input); const params = {}; url.searchParams.forEach((v, k) => { params[k] = v; }); setOutput(JSON.stringify({ protocol: url.protocol, hostname: url.hostname, port: url.port || '(default)', pathname: url.pathname, params: params, hash: url.hash }, null, 2)); } catch(e) { setOutput('Error'); }};
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'URL Parser'),
+                    e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'https://example.com/path?param=value' }),
+                    e('button', { onClick: parseURL, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, 'PARSE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // HTML ENCODER
+            if (tool === 'html-encoder') {
+                const htmlEncode = (s) => s.split('').map(c => { const code = c.charCodeAt(0); return (code > 127 || '<>&"\''.includes(c)) ? '&#' + code + ';' : c; }).join('');
+                const htmlDecode = (s) => { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'HTML Encoder'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }), e('textarea', { value: output, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })),
+                    e('div', { className: 'grid grid-cols-2 gap-2' }, e('button', { onClick: () => setOutput(htmlEncode(input)), className: 'px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'ENCODE'), e('button', { onClick: () => setOutput(htmlDecode(input)), className: 'px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'DECODE'))
+                );
+            }
+            // HEX EDITOR
+            if (tool === 'hex-editor') {
+                const [hexData, setHexData] = useState('');
+                const textToHex = () => { const h = Array.from(input).map((c, i) => { const hx = c.charCodeAt(0).toString(16).padStart(2, '0'); return (i % 16 === 0 ? '\n' : '') + hx + ' '; }).join(''); setHexData(h); setOutput(h); };
+                const hexToText = () => { try { const clean = hexData.replace(/[^0-9a-f]/gi, ''); const text = clean.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''); setOutput(text); } catch(e) { setOutput('Error'); }};
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Hex Editor Pro'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('div', null, e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }), e('button', { onClick: textToHex, className: 'mt-2 w-full px-4 py-2 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-xs font-bold' }, 'TEXT → HEX')), e('div', null, e('textarea', { value: hexData, onChange: (ev) => setHexData(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }), e('button', { onClick: hexToText, className: 'mt-2 w-full px-4 py-2 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-xs font-bold' }, 'HEX → TEXT'))),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // FILE ANALYZER
+            if (tool === 'file-analyzer') {
+                const magic = { 'PNG': '89504e47', 'JPEG': 'ffd8ffe0', 'GIF': '47494638', 'PDF': '25504446', 'ZIP': '504b0304', 'EXE': '4d5a' };
+                const analyze = () => { const hex = input.replace(/\s/g, '').toLowerCase(); const m = []; for (const [type, sig] of Object.entries(magic)) { if (hex.startsWith(sig)) m.push(type); } setOutput(m.length > 0 ? `Identified: ${m.join(', ')}` : 'Unknown'); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'File Analyzer'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Hex...' }),
+                    e('button', { onClick: analyze, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'ANALYZE'),
+                    e('div', { className: 'bg-black/50 border border-gray-700 rounded p-4 text-xs font-mono' }, ...Object.entries(magic).map(([t, s]) => e('div', { key: t, className: 'flex justify-between mb-1' }, e('span', { className: 'text-gray-400' }, t + ':'), e('span', { className: 'text-[#00d9ff]' }, s)))),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // STRING EXTRACTOR
+            if (tool === 'string-extractor') {
+                const [minLen, setMinLen] = useState(4);
+                const extract = () => { const regex = new RegExp(`[\\x20-\\x7E]{${minLen},}`, 'g'); const m = input.match(regex); setOutput(m ? `Found ${m.length}:\n\n` + m.join('\n') : 'None found'); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'String Extractor'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }),
+                    e('div', { className: 'flex gap-4' }, e('input', { type: 'number', value: minLen, onChange: (ev) => setMinLen(parseInt(ev.target.value) || 4), min: 1, className: 'w-24 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }), e('button', { onClick: extract, className: 'flex-1 px-4 py-2 bg-[#00ff41]/20 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'EXTRACT')),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-64 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // BINARY CONVERTER
+            if (tool === 'binary-converter') {
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Binary Converter'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }),
+                    e('div', { className: 'grid grid-cols-3 gap-2' }, e('button', { onClick: () => setOutput(Array.from(input).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' ')), className: 'px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'TO HEX'), e('button', { onClick: () => { try { setOutput(btoa(input)); } catch(e) { setOutput('Error'); }}, className: 'px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'TO BASE64'), e('button', { onClick: () => setOutput(input.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' ')), className: 'px-3 py-2 bg-green-600/20 border border-green-500 rounded text-xs font-bold' }, 'TO BINARY')),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // ASCII CONVERTER
+            if (tool === 'ascii-converter') {
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'ASCII Converter'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }),
+                    e('div', { className: 'grid grid-cols-2 gap-2' }, e('button', { onClick: () => setOutput(input.split('').map(c => c.charCodeAt(0)).join(' ')), className: 'px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'TO ASCII'), e('button', { onClick: () => setOutput(input.split(' ').map(n => String.fromCharCode(parseInt(n))).join('')), className: 'px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'FROM ASCII')),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // ENDIAN CONVERTER
+            if (tool === 'endian-converter') {
+                const swap = () => { const hex = input.replace(/\s/g, ''); if (hex.length % 2 !== 0) { setOutput('Invalid'); return; } const pairs = hex.match(/.{2}/g) || []; setOutput(pairs.reverse().join('')); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Endian Converter'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }),
+                    e('button', { onClick: swap, className: 'w-full px-4 py-3 bg-[#ffaa00]/20 border border-[#ffaa00] rounded text-[#ffaa00] font-bold' }, 'SWAP ENDIANNESS'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // BIT MANIPULATOR
+            if (tool === 'bit-manipulator') {
+                const [num, setNum] = useState(''); const [num2, setNum2] = useState(''); const [op, setOp] = useState('and');
+                const calc = () => { const a = parseInt(num), b = parseInt(num2); if (isNaN(a) || isNaN(b)) { setOutput('Invalid'); return; } let r; switch(op) { case 'and': r = a & b; break; case 'or': r = a | b; break; case 'xor': r = a ^ b; break; case 'not': r = ~a; break; case 'lshift': r = a << b; break; case 'rshift': r = a >> b; break; } setOutput(`Result: ${r}\nBinary: ${r.toString(2)}\nHex: 0x${r.toString(16)}`); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Bit Manipulator'),
+                    e('div', { className: 'grid grid-cols-3 gap-2' }, e('input', { type: 'number', value: num, onChange: (ev) => setNum(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }), e('select', { value: op, onChange: (ev) => setOp(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }, e('option', { value: 'and' }, 'AND'), e('option', { value: 'or' }, 'OR'), e('option', { value: 'xor' }, 'XOR'), e('option', { value: 'not' }, 'NOT'), e('option', { value: 'lshift' }, '<<'), e('option', { value: 'rshift' }, '>>')), e('input', { type: 'number', value: num2, onChange: (ev) => setNum2(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' })),
+                    e('button', { onClick: calc, className: 'w-full px-4 py-3 bg-[#ffaa00]/20 border border-[#ffaa00] rounded text-[#ffaa00] font-bold' }, 'CALCULATE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // NUMBER BASE
+            if (tool === 'number-base') {
+                const convert = (from) => { const n = from === 10 ? parseInt(input) : parseInt(input, from); if (isNaN(n)) { setOutput('Invalid'); return; } setOutput(`Dec: ${n}\nHex: 0x${n.toString(16)}\nOct: 0${n.toString(8)}\nBin: 0b${n.toString(2)}`); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Number Base'),
+                    e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }),
+                    e('div', { className: 'grid grid-cols-4 gap-2' }, e('button', { onClick: () => convert(10), className: 'px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'FROM DEC'), e('button', { onClick: () => convert(16), className: 'px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'FROM HEX'), e('button', { onClick: () => convert(8), className: 'px-3 py-2 bg-green-600/20 border border-green-500 rounded text-xs font-bold' }, 'FROM OCT'), e('button', { onClick: () => convert(2), className: 'px-3 py-2 bg-yellow-600/20 border border-yellow-500 rounded text-xs font-bold' }, 'FROM BIN')),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // HASH CRACKER HELPER
+            if (tool === 'hash-cracker') {
+                const gen = () => { const vars = [input, input.toLowerCase(), input.toUpperCase(), input + '123', input + '!', input + '2024']; setOutput(vars.map(v => `${v} → MD5: ${CryptoJS.MD5(v).toString()}`).join('\n')); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Hash Helper'),
+                    e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }),
+                    e('button', { onClick: gen, className: 'w-full px-4 py-3 bg-[#ff0055]/20 border border-[#ff0055] rounded text-[#ff0055] font-bold' }, 'GENERATE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-64 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // USERNAME FORMATTER
+            if (tool === 'username-formatter') {
+                const gen = () => { const parts = input.split(' '); const vars = [input.toLowerCase().replace(/\s/g, ''), input.toLowerCase().replace(/\s/g, '.'), input.toLowerCase().replace(/\s/g, '_'), input.toLowerCase().replace(/\s/g, '-'), parts[0]?.toLowerCase(), parts.map(p => p[0]).join('').toLowerCase()].filter(Boolean); setOutput(vars.join('\n')); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Username Formatter'),
+                    e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }),
+                    e('button', { onClick: gen, className: 'w-full px-4 py-3 bg-[#ff0055]/20 border border-[#ff0055] rounded text-[#ff0055] font-bold' }, 'GENERATE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // EMAIL PERMUTATOR
+            if (tool === 'email-permutator') {
+                const [domain, setDomain] = useState('example.com');
+                const gen = () => { const parts = input.split(' '); const vars = [`${input.toLowerCase().replace(/\s/g, '')}@${domain}`, `${input.toLowerCase().replace(/\s/g, '.')}@${domain}`, `${input.toLowerCase().replace(/\s/g, '_')}@${domain}`, `${parts[0]?.toLowerCase()}@${domain}`, `${parts.map(p => p[0]).join('').toLowerCase()}@${domain}`].filter(Boolean); setOutput(vars.join('\n')); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Email Permutator'),
+                    e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }),
+                    e('input', { type: 'text', value: domain, onChange: (ev) => setDomain(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }),
+                    e('button', { onClick: gen, className: 'w-full px-4 py-3 bg-[#ff0055]/20 border border-[#ff0055] rounded text-[#ff0055] font-bold' }, 'GENERATE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // PHONE FORMATTER
+            if (tool === 'phone-formatter') {
+                const [country, setCountry] = useState('+1');
+                const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${country} ${clean}`, `${country} (${clean.slice(0,3)}) ${clean.slice(3,6)}-${clean.slice(6)}`, `${country}-${clean.slice(0,3)}-${clean.slice(3,6)}-${clean.slice(6)}`, clean].join('\n')); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Phone Formatter'),
+                    e('div', { className: 'grid grid-cols-4 gap-2' }, e('input', { type: 'text', value: country, onChange: (ev) => setCountry(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }), e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'col-span-3 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' })),
+                    e('button', { onClick: format, className: 'w-full px-4 py-3 bg-[#ff0055]/20 border border-[#ff0055] rounded text-[#ff0055] font-bold' }, 'FORMAT'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            return e('div', { className: 'text-center py-12 text-gray-500' }, e(icons.Terminal, { className: 'w-16 h-16 mx-auto mb-4 opacity-50' }), e('p', { className: 'text-lg font-bold' }, 'Tool Ready'), e('p', { className: 'text-sm mt-2' }, 'Select a tool to begin'));
         }
-    };
-
-    const forgeJWT = () => {
-        try {
-            const header = JSON.parse(decodedHeader);
-            const payload = JSON.parse(decodedPayload);
-            const base64UrlEncode = (str) => {
-                return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-            };
-            const newHeader = base64UrlEncode(JSON.stringify(header));
-            const newPayload = base64UrlEncode(JSON.stringify(payload));
-            setOutput(`${newHeader}.${newPayload}.${signature}`);
-        } catch (err) {
-            setOutput('Error: ' + err.message);
-        }
-    };
-
-    return e('div', { className: 'space-y-4' },
-        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'JWT Swiss Army Knife'),
-        e('textarea', {
-            value: input,
-            onChange: (ev) => setInput(ev.target.value),
-            className: 'w-full h-20 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-            placeholder: 'Paste JWT...'
-        }),
-        e('button', {
-            onClick: decodeJWT,
-            className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold'
-        }, 'DECODE JWT'),
-        e('div', { className: 'grid grid-cols-2 gap-4' },
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'HEADER'),
-                e('textarea', {
-                    value: decodedHeader,
-                    onChange: (ev) => setDecodedHeader(ev.target.value),
-                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none'
-                })
-            ),
-            e('div', null,
-                e('label', { className: 'block text-sm font-bold mb-2 text-gray-400' }, 'PAYLOAD'),
-                e('textarea', {
-                    value: decodedPayload,
-                    onChange: (ev) => setDecodedPayload(ev.target.value),
-                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none'
-                })
-            )
-        ),
-        e('input', {
-            type: 'text',
-            value: signature,
-            onChange: (ev) => setSignature(ev.target.value),
-            className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none',
-            placeholder: 'Signature'
-        }),
-        e('button', {
-            onClick: forgeJWT,
-            className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold'
-        }, 'FORGE JWT'),
-        e('textarea', {
-            value: output,
-            readOnly: true,
-            className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none'
-        })
-    );
-}
-
-// HEX EDITOR
-if (tool === 'hex-editor') {
-    const [hexData, setHexData] = useState('');
-
-    const textToHex = () => {
-        const hex = Array.from(input).map((c, i) => {
-            const h = c.charCodeAt(0).toString(16).padStart(2, '0');
-            return (i % 16 === 0 ? '\n' : '') + h + ' ';
-        }).join('');
-        setHexData(hex);
-        setOutput(hex);
-    };
-
-    const hexToText = () => {
-        try {
-            const cleaned = hexData.replace(/[^0-9a-f]/gi, '');
-            const text = cleaned.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join('');
-            setOutput(text);
-        } catch (err) {
-            setOutput('Error: ' + err.message);
-        }
-    };
-
-    return e('div', { className: 'space-y-4' },
-        e('h3', { className: 'text-lg font-bold mb-4', style: { color } }, 'Hex Editor Pro'),
-        e('div', { className: 'grid grid-cols-2 gap-4' },
-            e('div', null,
-                e('textarea', {
-                    value: input,
-                    onChange: (ev) => setInput(ev.target.value),
-                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-                    placeholder: 'Text...'
-                }),
-                e('button', {
-                    onClick: textToHex,
-                    className: 'mt-2 w-full px-4 py-2 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-xs font-bold'
-                }, 'TEXT → HEX')
-            ),
-            e('div', null,
-                e('textarea', {
-                    value: hexData,
-                    onChange: (ev) => setHexData(ev.target.value),
-                    className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none',
-                    placeholder: 'Hex...'
-                }),
-                e('button', {
-                    onClick: hexToText,
-                    className: 'mt-2 w-full px-4 py-2 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-xs font-bold'
-                }, 'HEX → TEXT')
-            )
-        ),
-        e('textarea', {
-            value: output,
-            readOnly: true,
-            className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none'
-        })
-    );
-}
-
-
-            
-            return e('div', { className: 'text-center py-12 text-gray-500' },
-                e(icons.Terminal, { className: 'w-16 h-16 mx-auto mb-4 opacity-50' }),
-                e('p', { className: 'text-lg font-bold' }, 'Tool Implementation In Progress'),
-                e('p', { className: 'text-sm mt-2' }, 'This tool will be available in the next update')
-            );
-        }
-
-        // Render app when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 ReactDOM.render(React.createElement(CTFToolkit), document.getElementById('root'));
@@ -976,3 +360,4 @@ if (tool === 'hex-editor') {
     </script>
 </body>
 </html>
+
