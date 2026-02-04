@@ -174,11 +174,11 @@
                 const [detectedEncoding, setDetectedEncoding] = useState('');
                 const encodings = [
                     { id: 'base64', name: 'Base64', encode: (s) => btoa(s), decode: (s) => atob(s) },
-                    { id: 'hex', name: 'Hex', encode: (s) => Array.from(s).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(''), decode: (s) => s.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join('') },
+                    { id: 'hex', name: 'Hex', encode: (s) => Array.from(s).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(''), decode: (s) => (s.match(/.{2}/g) || []).map(h => String.fromCharCode(parseInt(h, 16))).join('') },
                     { id: 'url', name: 'URL', encode: encodeURIComponent, decode: decodeURIComponent },
                     { id: 'rot13', name: 'ROT13', encode: (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13))), decode: (s) => s.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13))) },
                     { id: 'binary', name: 'Binary', encode: (s) => s.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '), decode: (s) => s.split(' ').map(b => String.fromCharCode(parseInt(b, 2))).join('') },
-                    { id: 'morse', name: 'Morse', encode: (s) => { const m = {'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---','K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-','U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.', ' ':'/'}; return s.toUpperCase().split('').map(c => m[c] || c).join(' '); }, decode: (s) => { const m = {'.-':'A','-...':'B','-.-.':'C','-..':'D','.':'E','..-.':'F','--.':'G','....':'H','..':'I','.---':'J','-.-':'K','.-..':'L','--':'M','-.':'N','---':'O','.--.':'P','--.-':'Q','.-.':'R','...':'S','-':'T','..-':'U','...-':'V','.--':'W','-..-':'X','-.--':'Y','--..':'Z','-----':'0','.----':'1','..---':'2','...--':'3','....-':'4','.....':'5','-....':'6','--...':'7','---..':'8','----.':'9','/':' '}; return s.split(' ').map(m => m[m] || m).join(''); }}
+                    { id: 'morse', name: 'Morse', encode: (s) => { const m = {'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---','K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-','U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.', ' ':'/'}; return s.toUpperCase().split('').map(c => m[c] || c).join(' '); }, decode: (s) => { const m = {'.-':'A','-...':'B','-.-.':'C','-..':'D','.':'E','..-.':'F','--.':'G','....':'H','..':'I','.---':'J','-.-':'K','.-..':'L','--':'M','-.':'N','---':'O','.--.':'P','--.-':'Q','.-.':'R','...':'S','-':'T','..-':'U','...-':'V','.--':'W','-..-':'X','-.--':'Y','--..':'Z','-----':'0','.----':'1','..---':'2','...--':'3','....-':'4','.....':'5','-....':'6','--...':'7','---..':'8','----.':'9','/':' '}; return s.split(' ').map(code => m[code] || code).join(''); }}
                 ];
                 const detectEncoding = (str) => { if (/^[A-Za-z0-9+/]+=*$/.test(str) && str.length % 4 === 0) return 'base64'; if (/^[0-9a-fA-F]+$/.test(str)) return 'hex'; if (/%[0-9A-F]{2}/.test(str)) return 'url'; if (/^[01\s]+$/.test(str)) return 'binary'; if (/^[.-\/\s]+$/.test(str)) return 'morse'; return 'unknown'; };
                 const handleEncode = (enc) => { try { setOutput(encodings.find(e => e.id === enc).encode(input)); } catch(err) { setOutput('Error: ' + err.message); }};
@@ -435,12 +435,22 @@
 
             return e('div', { className: 'text-center py-12 text-gray-500' }, e(icons.Terminal, { className: 'w-16 h-16 mx-auto mb-4 opacity-50' }), e('p', { className: 'text-lg font-bold' }, 'Tool Ready'), e('p', { className: 'text-sm mt-2' }, 'Select a tool to begin'));
         }
+        const mountApp = () => {
+            const rootEl = document.getElementById('root');
+            if (!rootEl) return;
+            // React 18+
+            if (ReactDOM.createRoot) {
+                ReactDOM.createRoot(rootEl).render(React.createElement(CTFToolkit));
+            } else {
+                // Legacy fallback
+                ReactDOM.render(React.createElement(CTFToolkit), rootEl);
+            }
+        };
+
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                ReactDOM.render(React.createElement(CTFToolkit), document.getElementById('root'));
-            });
+            document.addEventListener('DOMContentLoaded', mountApp);
         } else {
-            ReactDOM.render(React.createElement(CTFToolkit), document.getElementById('root'));
+            mountApp();
         }
     </script>
 </body>
