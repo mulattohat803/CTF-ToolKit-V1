@@ -68,6 +68,8 @@
                     { id: 'file-analyzer', name: 'File Signature Analyzer', desc: 'Identify by magic bytes' },
                     { id: 'string-extractor', name: 'String Extractor', desc: 'Extract ASCII strings' },
                     { id: 'binary-converter', name: 'Binary Converter', desc: 'Format conversion' }
+                ,                    { id: 'entropy-check', name: 'Entropy / Randomness', desc: 'Quick entropy score & hints' },
+                    { id: 'regex-lab', name: 'Regex Lab', desc: 'Test regex, extract matches' }
                 ],
                 binary: [
                     { id: 'ascii-converter', name: 'ASCII Converter', desc: 'ASCII code conversion' },
@@ -80,6 +82,9 @@
                     { id: 'username-formatter', name: 'Username Formatter', desc: 'Username formats' },
                     { id: 'email-permutator', name: 'Email Permutator', desc: 'Email variations' },
                     { id: 'phone-formatter', name: 'Phone Formatter', desc: 'Format phone numbers' }
+                ,                    { id: 'defang-refang', name: 'Defang / Refang IOCs', desc: 'Safe sharing of URLs/IPs + extract IOCs' },
+                    { id: 'timestamp-converter', name: 'Timestamp Converter', desc: 'Unix ↔ human time' },
+                    { id: 'cidr-calculator', name: 'CIDR/Subnet Calculator', desc: 'Network ranges & hosts' }
                 ]
             };
             const currentCategory = categories.find(c => c.id === activeCategory);
@@ -191,6 +196,33 @@
             const [op, setOp] = useState('and');
             const [domain, setDomain] = useState('example.com');
             const [country, setCountry] = useState('+1');
+            // Elite utilities state
+            const [regexPattern, setRegexPattern] = useState('');
+            const [regexFlags, setRegexFlags] = useState('g');
+            const [entropyScore, setEntropyScore] = useState('');
+            const [iocMode, setIocMode] = useState('defang');
+            const [tsInput, setTsInput] = useState('');
+            const [cidrIp, setCidrIp] = useState('');
+            const [cidrPrefix, setCidrPrefix] = useState('24');
+
+            const copyToClipboard = async (text) => {
+                try {
+                    if (!text) return;
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(text);
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.style.position = 'fixed';
+                        ta.style.left = '-9999px';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
+                } catch (e) {}
+            };
 
 // MULTI-CODEC ENGINE
             if (tool === 'multi-codec') {
@@ -441,6 +473,224 @@ const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${cou
                     e('div', { className: 'grid grid-cols-4 gap-2' }, e('input', { type: 'text', value: country, onChange: (ev) => setCountry(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' }), e('input', { type: 'text', value: input, onChange: (ev) => setInput(ev.target.value), className: 'col-span-3 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none' })),
                     e('button', { onClick: format, className: 'w-full px-4 py-3 bg-[#ff0055]/20 border border-[#ff0055] rounded text-[#ff0055] font-bold' }, 'FORMAT'),
                     e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+
+            // ENTROPY CHECK
+            if (tool === 'entropy-check') {
+                const compute = () => {
+                    const s = input || '';
+                    if (!s.length) { setEntropyScore(''); setOutput(''); return; }
+                    // Shannon entropy
+                    const freq = {};
+                    for (const ch of s) freq[ch] = (freq[ch] || 0) + 1;
+                    let ent = 0;
+                    for (const k in freq) {
+                        const p = freq[k] / s.length;
+                        ent -= p * Math.log2(p);
+                    }
+                    const bitsPerChar = ent;
+                    const hint = bitsPerChar > 4.5 ? 'High entropy (likely encrypted/compressed/random)' :
+                                 bitsPerChar > 3.5 ? 'Medium entropy (could be encoded/compressed)' :
+                                 'Low entropy (likely plain text / structured)';
+                    setEntropyScore(bitsPerChar.toFixed(3));
+                    setOutput(`Length: ${s.length}\nEntropy: ${bitsPerChar.toFixed(3)} bits/char\nHint: ${hint}`);
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-2', style: { color }}, 'Entropy / Randomness'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none', placeholder: 'Paste text, hex, base64...' }),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: compute, className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'ANALYZE'),
+                        e('button', { onClick: () => copyToClipboard(output), className: 'px-4 py-2 bg-[#00ff41]/10 hover:bg-[#00ff41]/20 border border-[#00ff41]/60 rounded text-[#00ff41] font-bold' }, 'COPY')
+                    ),
+                    entropyScore && e('div', { className: 'text-sm text-gray-300' }, `Entropy: ${entropyScore} bits/char`),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // REGEX LAB
+            if (tool === 'regex-lab') {
+                const run = () => {
+                    try {
+                        const flags = (regexFlags || '').replace(/[^gimsuy]/g, '');
+                        const reObj = new RegExp(regexPattern, flags.includes('g') ? flags : flags + 'g');
+                        const matches = [];
+                        let m;
+                        const text = input || '';
+                        while ((m = reObj.exec(text)) !== null) {
+                            matches.push({
+                                match: m[0],
+                                index: m.index,
+                                groups: m.slice(1)
+                            });
+                            if (m[0] === '') reObj.lastIndex++; // avoid infinite loop
+                        }
+                        if (!matches.length) { setOutput('No matches'); return; }
+                        const lines = matches.map((x, i) =>
+                            `${i+1}. @${x.index}: ${x.match}` + (x.groups.length ? ` | groups: [${x.groups.join(', ')}]` : '')
+                        );
+                        setOutput(lines.join('\n'));
+                    } catch (e) {
+                        setOutput('Regex error: ' + (e && e.message ? e.message : String(e)));
+                    }
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-2', style: { color }}, 'Regex Lab'),
+                    e('div', { className: 'grid grid-cols-4 gap-2' },
+                        e('input', { type: 'text', value: regexPattern, onChange: (ev) => setRegexPattern(ev.target.value), className: 'col-span-3 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'Pattern (no / /) e.g. flag\\{([^}]+)\\}' }),
+                        e('input', { type: 'text', value: regexFlags, onChange: (ev) => setRegexFlags(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'flags e.g. gim' })
+                    ),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none', placeholder: 'Paste text to search...' }),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: run, className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'RUN'),
+                        e('button', { onClick: () => copyToClipboard(output), className: 'px-4 py-2 bg-[#00ff41]/10 hover:bg-[#00ff41]/20 border border-[#00ff41]/60 rounded text-[#00ff41] font-bold' }, 'COPY OUTPUT')
+                    ),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // DEFANG / REFANG
+            if (tool === 'defang-refang') {
+                const transform = () => {
+                    const s = input || '';
+                    const defang = (t) => t
+                        .replace(/\./g, '[.]')
+                        .replace(/http:\/\//gi, 'hxxp://')
+                        .replace(/https:\/\//gi, 'hxxps://')
+                        .replace(/@/g, '[@]');
+                    const refang = (t) => t
+                        .replace(/\[\.\]/g, '.')
+                        .replace(/hxxp:\/\//gi, 'http://')
+                        .replace(/hxxps:\/\//gi, 'https://')
+                        .replace(/\[@\]/g, '@');
+
+                    const extract = (t) => {
+                        const urls = t.match(/https?:\/\/[^\s"'<>()]+/gi) || [];
+                        const ips  = t.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) || [];
+                        const domains = t.match(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/gi) || [];
+                        const uniq = (arr) => Array.from(new Set(arr));
+                        return [
+                            'URLs:', ...uniq(urls),
+                            '', 'IPs:', ...uniq(ips),
+                            '', 'Domains:', ...uniq(domains)
+                        ].join('\n');
+                    };
+
+                    if (iocMode === 'defang') setOutput(defang(s));
+                    else if (iocMode === 'refang') setOutput(refang(s));
+                    else setOutput(extract(s));
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-2', style: { color }}, 'Defang / Refang IOCs'),
+                    e('div', { className: 'flex gap-2 flex-wrap' },
+                        ['defang','refang','extract'].map(mode =>
+                            e('button', { key: mode, onClick: () => setIocMode(mode), className: `px-3 py-2 rounded font-bold text-sm border ${iocMode===mode ? 'bg-[#00ff41]/20 border-[#00ff41] text-[#00ff41]' : 'bg-black/30 border-gray-700 text-gray-400'}` },
+                              mode.toUpperCase()
+                            )
+                        ),
+                        e('button', { onClick: transform, className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'RUN'),
+                        e('button', { onClick: () => copyToClipboard(output), className: 'px-4 py-2 bg-[#00ff41]/10 hover:bg-[#00ff41]/20 border border-[#00ff41]/60 rounded text-[#00ff41] font-bold' }, 'COPY')
+                    ),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none', placeholder: 'Paste URLs, domains, IPs...' }),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // TIMESTAMP CONVERTER
+            if (tool === 'timestamp-converter') {
+                const convert = () => {
+                    const s = (tsInput || '').trim();
+                    if (!s) { setOutput(''); return; }
+
+                    // If numeric, treat as unix (sec or ms)
+                    if (/^-?\d+$/.test(s)) {
+                        const n = Number(s);
+                        const ms = n > 1e12 ? n : n * 1000;
+                        const d = new Date(ms);
+                        if (isNaN(d.getTime())) { setOutput('Invalid timestamp'); return; }
+                        setOutput([
+                            `ISO: ${d.toISOString()}`,
+                            `UTC: ${d.toUTCString()}`,
+                            `Local: ${d.toString()}`,
+                            `Unix (sec): ${Math.floor(ms/1000)}`,
+                            `Unix (ms): ${ms}`
+                        ].join('\n'));
+                        return;
+                    }
+
+                    // Otherwise parse as date string
+                    const d = new Date(s);
+                    if (isNaN(d.getTime())) { setOutput('Could not parse date/time'); return; }
+                    const ms = d.getTime();
+                    setOutput([
+                        `Unix (sec): ${Math.floor(ms/1000)}`,
+                        `Unix (ms): ${ms}`,
+                        `ISO: ${d.toISOString()}`,
+                        `UTC: ${d.toUTCString()}`,
+                        `Local: ${d.toString()}`
+                    ].join('\n'));
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-2', style: { color }}, 'Timestamp Converter'),
+                    e('input', { type: 'text', value: tsInput, onChange: (ev) => setTsInput(ev.target.value), className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'Unix seconds/ms OR date string (e.g., 2026-02-04T12:00:00Z)' }),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: convert, className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'CONVERT'),
+                        e('button', { onClick: () => copyToClipboard(output), className: 'px-4 py-2 bg-[#00ff41]/10 hover:bg-[#00ff41]/20 border border-[#00ff41]/60 rounded text-[#00ff41] font-bold' }, 'COPY')
+                    ),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // CIDR / SUBNET CALCULATOR
+            if (tool === 'cidr-calculator') {
+                const ipToInt = (ip) => ip.split('.').reduce((a, o) => (a<<8) + (Number(o)&255), 0) >>> 0;
+                const intToIp = (n) => [n>>>24, (n>>>16)&255, (n>>>8)&255, n&255].join('.');
+                const calc = () => {
+                    try {
+                        const ip = (cidrIp || '').trim();
+                        const pfx = Number((cidrPrefix || '').trim());
+                        if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) || isNaN(pfx) || pfx<0 || pfx>32) {
+                            setOutput('Invalid IP or prefix'); return;
+                        }
+                        const ipInt = ipToInt(ip);
+                        const mask = pfx === 0 ? 0 : (0xFFFFFFFF << (32 - pfx)) >>> 0;
+                        const net = (ipInt & mask) >>> 0;
+                        const bcast = (net | (~mask)) >>> 0;
+                        const hosts = pfx >= 31 ? (pfx === 31 ? 2 : 1) : (bcast - net - 1);
+                        const first = pfx >= 31 ? net : net + 1;
+                        const last = pfx >= 31 ? bcast : bcast - 1;
+
+                        setOutput([
+                            `IP: ${ip}`,
+                            `Prefix: /${pfx}`,
+                            `Netmask: ${intToIp(mask)}`,
+                            `Network: ${intToIp(net)}`,
+                            `Broadcast: ${intToIp(bcast)}`,
+                            `First host: ${intToIp(first)}`,
+                            `Last host: ${intToIp(last)}`,
+                            `Usable hosts: ${hosts}`
+                        ].join('\n'));
+                    } catch (e) {
+                        setOutput('Error: ' + (e && e.message ? e.message : String(e)));
+                    }
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-2', style: { color }}, 'CIDR/Subnet Calculator'),
+                    e('div', { className: 'grid grid-cols-6 gap-2' },
+                        e('input', { type: 'text', value: cidrIp, onChange: (ev) => setCidrIp(ev.target.value), className: 'col-span-4 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'IP (e.g., 10.10.10.10)' }),
+                        e('input', { type: 'number', value: cidrPrefix, onChange: (ev) => setCidrPrefix(ev.target.value), min: 0, max: 32, className: 'col-span-2 px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: '24' })
+                    ),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: calc, className: 'px-4 py-2 bg-[#00ff41]/20 hover:bg-[#00ff41]/30 border border-[#00ff41] rounded text-[#00ff41] font-bold' }, 'CALCULATE'),
+                        e('button', { onClick: () => copyToClipboard(output), className: 'px-4 py-2 bg-[#00ff41]/10 hover:bg-[#00ff41]/20 border border-[#00ff41]/60 rounded text-[#00ff41] font-bold' }, 'COPY')
+                    ),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
                 );
             }
 
