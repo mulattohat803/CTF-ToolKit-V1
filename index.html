@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAPTOR//TOOLKIT - Professional CTF Arsenal</title>
+    <title>CYPHER//TOOLKIT - Professional CTF Arsenal</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -460,70 +460,589 @@ function CTFToolkit() {
         }
         
         function NotesVault({ color, sendToWorkspace }) {
-            const { useState, useEffect } = React;
+            const { useState, useEffect, useMemo, useRef } = React;
 
-            const [noteQuery, setNoteQuery] = useState('');
-            const [notes, setNotes] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('cypher_notes') || '[]'); } catch(e){ return []; }
-            });
-            const [activeNoteId, setActiveNoteId] = useState(() => {
+            const LS_KEY = 'cypher_cases_v1';
+
+            const uid = (p='id') => `${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+            const loadState = () => {
                 try {
-                    const stored = JSON.parse(localStorage.getItem('cypher_notes') || '[]');
-                    return (stored[0] && stored[0].id) ? stored[0].id : null;
-                } catch(e) { return null; }
+                    const raw = localStorage.getItem(LS_KEY);
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch(e){ return null; }
+            };
+            const saveState = (st) => { try { localStorage.setItem(LS_KEY, JSON.stringify(st)); } catch(e){} };
+
+            const [state, setState] = useState(() => {
+                const st = loadState();
+                if (st && st.cases && st.cases.length) return st;
+
+                const defaultCaseId = uid('case');
+                const defaultNoteId = uid('note');
+                const now = Date.now();
+
+                return {
+                    version: 1,
+                    activeCaseId: defaultCaseId,
+                    cases: [{
+                        id: defaultCaseId,
+                        name: 'Default Case',
+                        createdAt: now,
+                        updatedAt: now,
+                        activeNoteId: defaultNoteId,
+                        notes: [{
+                            id: defaultNoteId,
+                            title: 'Welcome',
+                            body:
+`# Welcome to Notes Vault 🗂️
+
+This is **case-based** note taking designed for CTFs.
+
+## Quick tricks
+- Use \`#tags\` anywhere (example: #web #crypto #forensics)
+- Link notes with \`[[Note Title]]\`
+- Use templates to start fast
+
+## Suggested workflow
+1. Create a Case (left sidebar)
+2. Use Templates to structure your writeup
+3. Send useful output from tools → Workspace → Notes
+
+Good hunting. 🚀
+`,
+                            createdAt: now,
+                            updatedAt: now,
+                        }]
+                    }]
+                };
             });
 
-            useEffect(() => { try { localStorage.setItem('cypher_notes', JSON.stringify(notes)); } catch(e){} }, [notes]);
+            useEffect(() => { saveState(state); }, [state]);
 
-            const activeNote = notes.find(n => n.id === activeNoteId) || null;
+            const currentCase = state.cases.find(c => c.id === state.activeCaseId) || state.cases[0];
+            const notes = currentCase ? (currentCase.notes || []) : [];
+            const activeNote = currentCase ? notes.find(n => n.id === currentCase.activeNoteId) : null;
+
+            // --- Templates ---
+            const templates = useMemo(() => ({
+                'CTF Writeup': 
+`# Title
+**Event:**  
+**Category:**  
+**Target:**  
+**Date:**  
+
+## Summary
+- 
+
+## Recon
+- 
+
+## Exploit / Steps
+1. 
+
+## Proof
+\`\`\`
+\`\`\`
+
+## Flag
+\`HTB{...}\`
+
+## Notes / Next
+- 
+`,
+                'Web Exploit': 
+`# Web Exploit Notes
+## Target / Scope
+- Base URL: 
+- Auth: 
+- Constraints: 
+
+## Endpoints
+- 
+
+## Parameters
+- 
+
+## Findings
+- [ ] Potential injection:
+- [ ] Auth issue:
+- [ ] Misconfig:
+
+## Requests
+\`\`\`http
+GET / HTTP/1.1
+Host: example.com
+\`\`\`
+
+## Payload Ideas (safe)
+- Input normalization
+- Encoding tests
+- Param pollution
+`,
+                'Crypto Analysis':
+`# Crypto Analysis
+## Ciphertext
+\`\`\`
+\`\`\`
+
+## Clues
+- 
+
+## Hypotheses
+- [ ] Base64/hex layering
+- [ ] XOR / OTP reuse
+- [ ] Classical cipher
+
+## Work
+- 
+
+## Result
+- 
+`,
+                'Reversing Notes':
+`# Reversing Notes
+## Binary Info
+- File: 
+- Arch: 
+- Entry: 
+
+## Strings / IOCs
+- 
+
+## Interesting Functions
+- 
+
+## Offsets / Patterns
+- 
+
+## Hypothesis
+- 
+
+## Result
+- 
+`,
+                'Incident / IOC Report':
+`# Incident / IOC Report
+## Summary
+- 
+
+## Indicators
+- Hashes:
+- Domains:
+- IPs:
+- Filenames:
+
+## Evidence
+- 
+
+## Timeline
+- 
+
+## Recommendations
+- 
+`
+            }), []);
+
+            // --- Markdown Renderer (safe minimal) ---
+            const escapeHtml = (s) => (s || '')
+                .replaceAll('&','&amp;')
+                .replaceAll('<','&lt;')
+                .replaceAll('>','&gt;')
+                .replaceAll('"','&quot;')
+                .replaceAll("'","&#39;");
+
+            const mdToHtml = (md) => {
+                let text = (md || '').replace(/\r\n/g, '\n');
+
+                // fenced code blocks
+                const codeBlocks = [];
+                text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
+                    const idx = codeBlocks.length;
+                    codeBlocks.push(`<pre class="bg-black/60 border border-gray-700 rounded p-3 overflow-auto text-xs"><code>${escapeHtml(code.trim())}</code></pre>`);
+                    return `@@CODEBLOCK_${idx}@@`;
+                });
+
+                // inline code
+                text = text.replace(/`([^`]+)`/g, (_, c) => `<code class="px-1 py-0.5 rounded bg-black/60 border border-gray-700 text-xs">${escapeHtml(c)}</code>`);
+
+                // headings
+                text = text.replace(/^### (.*)$/gm, '<h3 class="text-lg font-bold mt-3 mb-2">$1</h3>');
+                text = text.replace(/^## (.*)$/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>');
+                text = text.replace(/^# (.*)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-3">$1</h1>');
+
+                // bold + italics (simple)
+                text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+                // links
+                text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a class="underline text-[#00d9ff]" href="$2" target="_blank" rel="noreferrer">$1</a>');
+
+                // checklists
+                text = text.replace(/^\s*-\s*\[ \]\s+(.*)$/gm, '<div class="flex gap-2 items-start"><input type="checkbox" disabled class="mt-1"/><div>$1</div></div>');
+                text = text.replace(/^\s*-\s*\[x\]\s+(.*)$/gmi, '<div class="flex gap-2 items-start"><input type="checkbox" checked disabled class="mt-1"/><div>$1</div></div>');
+
+                // unordered lists
+                text = text.replace(/^\s*-\s+(.*)$/gm, '<li>$1</li>');
+                // wrap consecutive li into ul
+                text = text.replace(/(<li>[\s\S]*?<\/li>)/g, (block) => block); // noop
+                text = text.replace(/(?:<li>.*<\/li>\n?)+/g, (m) => `<ul class="list-disc ml-6 space-y-1">${m}</ul>`);
+
+                // paragraphs / line breaks
+                text = text.split('\n\n').map(p => {
+                    if (p.includes('@@CODEBLOCK_') || p.trim().startsWith('<h') || p.trim().startsWith('<ul') || p.trim().startsWith('<pre')) return p;
+                    return `<p class="my-2 leading-relaxed">${p.replace(/\n/g,'<br/>')}</p>`;
+                }).join('\n');
+
+                // restore code blocks
+                text = text.replace(/@@CODEBLOCK_(\d+)@@/g, (_, i) => codeBlocks[Number(i)] || '');
+
+                return text;
+            };
+
+            // --- Tags & Backlinks ---
+            const extractTags = (body) => {
+                const tags = new Set();
+                (body || '').replace(/(^|\s)#([a-z0-9_\-]+)/gi, (_, __, t) => { tags.add(t.toLowerCase()); return ''; });
+                return Array.from(tags).sort();
+            };
+
+            const noteTitleMap = useMemo(() => {
+                const m = new Map();
+                for (const n of notes) m.set((n.title||'').toLowerCase().trim(), n.id);
+                return m;
+            }, [notes]);
+
+            const extractLinks = (body) => {
+                const links = [];
+                (body || '').replace(/\[\[([^\]]+)\]\]/g, (_, t) => { links.push(t.trim()); return ''; });
+                return links;
+            };
+
+            const backlinks = useMemo(() => {
+                if (!activeNote) return [];
+                const title = (activeNote.title||'').trim();
+                if (!title) return [];
+                const needle = `[[${title}]]`.toLowerCase();
+                const refs = [];
+                for (const n of notes) {
+                    if (n.id === activeNote.id) continue;
+                    if ((n.body||'').toLowerCase().includes(needle)) refs.push(n);
+                }
+                return refs;
+            }, [activeNote, notes]);
+
+            // --- UI state ---
+            const [noteQuery, setNoteQuery] = useState('');
+            const [tagFilter, setTagFilter] = useState('');
+            const [splitView, setSplitView] = useState(true);
+            const editorRef = useRef(null);
+
+            const activeTags = useMemo(() => activeNote ? extractTags(activeNote.body) : [], [activeNote?.body]);
+
+            const filteredNotes = useMemo(() => {
+                let list = notes;
+                const q = noteQuery.trim().toLowerCase();
+                if (q) {
+                    list = list.filter(n =>
+                        (n.title||'').toLowerCase().includes(q) ||
+                        (n.body||'').toLowerCase().includes(q)
+                    );
+                }
+                if (tagFilter) {
+                    list = list.filter(n => extractTags(n.body).includes(tagFilter));
+                }
+                // newest first
+                return [...list].sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+            }, [notes, noteQuery, tagFilter]);
+
+            const updateCase = (caseId, patchFn) => {
+                setState(prev => {
+                    const next = { ...prev, cases: prev.cases.map(c => {
+                        if (c.id !== caseId) return c;
+                        const updated = patchFn(c);
+                        return { ...updated, updatedAt: Date.now() };
+                    })};
+                    return next;
+                });
+            };
+
+            const setActiveCaseId = (caseId) => setState(prev => ({ ...prev, activeCaseId: caseId }));
+
+            const createCase = () => {
+                const name = prompt('New case name?', 'New Case');
+                if (!name) return;
+                const caseId = uid('case');
+                const noteId = uid('note');
+                const now = Date.now();
+                const newCase = {
+                    id: caseId,
+                    name: name.trim(),
+                    createdAt: now,
+                    updatedAt: now,
+                    activeNoteId: noteId,
+                    notes: [{
+                        id: noteId,
+                        title: 'Case Notes',
+                        body: templates['CTF Writeup'] || '',
+                        createdAt: now,
+                        updatedAt: now
+                    }]
+                };
+                setState(prev => ({ ...prev, activeCaseId: caseId, cases: [newCase, ...prev.cases] }));
+            };
+
+            const renameCase = () => {
+                if (!currentCase) return;
+                const name = prompt('Rename case', currentCase.name);
+                if (!name) return;
+                updateCase(currentCase.id, (c) => ({ ...c, name: name.trim() }));
+            };
+
+            const deleteCase = () => {
+                if (!currentCase) return;
+                if (!confirm(`Delete case "${currentCase.name}"? This removes its notes.`)) return;
+                setState(prev => {
+                    const remaining = prev.cases.filter(c => c.id !== currentCase.id);
+                    if (!remaining.length) {
+                        // recreate a default
+                        const defaultCaseId = uid('case');
+                        const defaultNoteId = uid('note');
+                        const now = Date.now();
+                        return {
+                            version: 1,
+                            activeCaseId: defaultCaseId,
+                            cases: [{
+                                id: defaultCaseId,
+                                name: 'Default Case',
+                                createdAt: now,
+                                updatedAt: now,
+                                activeNoteId: defaultNoteId,
+                                notes: [{ id: defaultNoteId, title:'Welcome', body:'', createdAt: now, updatedAt: now }]
+                            }]
+                        };
+                    }
+                    return { ...prev, activeCaseId: remaining[0].id, cases: remaining };
+                });
+            };
 
             const createNote = () => {
-                const n = { id: 'n_'+Date.now(), title: 'New Note', body: '', updatedAt: Date.now() };
-                setNotes(prev => [n, ...prev]);
-                setActiveNoteId(n.id);
-            };
-            const deleteNote = () => {
-                if (!activeNote) return;
-                setNotes(prev => prev.filter(n => n.id !== activeNote.id));
-                setActiveNoteId(null);
-            };
-            const updateNote = (patch) => {
-                if (!activeNote) return;
-                setNotes(prev => prev.map(n => n.id===activeNote.id ? { ...n, ...patch, updatedAt: Date.now() } : n));
+                if (!currentCase) return;
+                const now = Date.now();
+                const n = { id: uid('note'), title: 'New Note', body: '', createdAt: now, updatedAt: now };
+                updateCase(currentCase.id, (c) => ({ ...c, activeNoteId: n.id, notes: [n, ...(c.notes||[])] }));
             };
 
-            const filtered = (noteQuery.trim() ? notes.filter(n =>
-                (n.title||'').toLowerCase().includes(noteQuery.toLowerCase()) ||
-                (n.body||'').toLowerCase().includes(noteQuery.toLowerCase())
-            ) : notes);
+            const deleteNote = () => {
+                if (!currentCase || !activeNote) return;
+                if (!confirm(`Delete note "${activeNote.title}"?`)) return;
+                updateCase(currentCase.id, (c) => {
+                    const remaining = (c.notes||[]).filter(n => n.id !== activeNote.id);
+                    return { ...c, notes: remaining, activeNoteId: remaining[0] ? remaining[0].id : null };
+                });
+            };
+
+            const setActiveNoteId = (noteId) => {
+                if (!currentCase) return;
+                updateCase(currentCase.id, (c) => ({ ...c, activeNoteId: noteId }));
+            };
+
+            const updateActiveNote = (patch) => {
+                if (!currentCase || !activeNote) return;
+                updateCase(currentCase.id, (c) => ({
+                    ...c,
+                    notes: (c.notes||[]).map(n => n.id === activeNote.id ? { ...n, ...patch, updatedAt: Date.now() } : n)
+                }));
+            };
+
+            const applyTemplate = (name) => {
+                if (!activeNote) return;
+                const tpl = templates[name];
+                if (!tpl) return;
+                const body = activeNote.body || '';
+                const next = body.trim() ? (tpl + '\n\n' + body) : tpl;
+                updateActiveNote({ body: next });
+            };
+
+            const jumpToLinkedNote = (title) => {
+                const id = noteTitleMap.get((title||'').toLowerCase().trim());
+                if (id) setActiveNoteId(id);
+            };
+
+            const insertAtCursor = (txt) => {
+                const el = editorRef.current;
+                if (!el || !activeNote) { updateActiveNote({ body: (activeNote?.body||'') + txt }); return; }
+                const start = el.selectionStart || 0;
+                const end = el.selectionEnd || 0;
+                const before = (activeNote.body||'').slice(0, start);
+                const after = (activeNote.body||'').slice(end);
+                const next = before + txt + after;
+                updateActiveNote({ body: next });
+                // restore cursor (async)
+                setTimeout(() => {
+                    try {
+                        el.focus();
+                        el.selectionStart = el.selectionEnd = start + txt.length;
+                    } catch(e){}
+                }, 0);
+            };
 
             return e('div', { className: 'space-y-4' },
-                e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Notes Vault'),
+                e('div', { className: 'flex items-center justify-between' },
+                    e('h3', { className: 'text-lg font-bold', style: { color } }, 'Notes Vault'),
+                    e('div', { className: 'flex items-center gap-2' },
+                        e('button', { onClick: () => setSplitView(v => !v), className:'px-3 py-2 rounded bg-black/40 border border-gray-700 text-xs font-bold hover:border-gray-500' }, splitView ? 'SPLIT' : 'EDITOR'),
+                        e('button', { onClick: () => sendToWorkspace(activeNote ? activeNote.body : '', '', { type:'note', title: activeNote ? activeNote.title : 'Notes Vault' }), className:'px-3 py-2 rounded bg-[#7c3aed]/15 border border-[#7c3aed]/50 text-xs font-bold' }, 'SEND → WORKSPACE')
+                    )
+                ),
+
                 e('div', { className: 'grid grid-cols-12 gap-4' },
-                    e('div', { className: 'col-span-4 rounded border border-gray-700 bg-black/30 p-3' },
-                        e('div', { className: 'flex gap-2 mb-2' },
-                            e('input', { value: noteQuery, onChange: (ev)=>setNoteQuery(ev.target.value), placeholder:'Search notes…', className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm' }),
+                    // Cases
+                    e('div', { className: 'col-span-3 rounded border border-gray-700 bg-black/30 p-3 space-y-2' },
+                        e('div', { className: 'flex items-center justify-between' },
+                            e('div', { className: 'text-xs text-gray-400' }, 'CASES'),
+                            e('button', { onClick: createCase, className:'px-2 py-1 rounded bg-[#00ff41]/10 border border-[#00ff41]/50 text-[10px] font-bold' }, '+')
+                        ),
+                        e('div', { className: 'space-y-2 max-h-[240px] overflow-auto pr-1' },
+                            ...state.cases.map(c => {
+                                const isActive = c.id === state.activeCaseId;
+                                return e('button', {
+                                    key: c.id,
+                                    onClick: () => setActiveCaseId(c.id),
+                                    className: `w-full text-left p-2 rounded border ${isActive ? 'border-[#00ff41]/60 bg-[#00ff41]/10' : 'border-gray-800 bg-black/20 hover:border-gray-600'}`
+                                },
+                                    e('div', { className: 'text-sm font-bold text-gray-200 truncate' }, c.name),
+                                    e('div', { className: 'text-[10px] text-gray-500' }, `${(c.notes||[]).length} note(s)`)
+                                );
+                            })
+                        ),
+                        e('div', { className: 'flex gap-2' },
+                            e('button', { onClick: renameCase, className:'w-full px-2 py-2 rounded bg-black/40 border border-gray-700 text-[10px] font-bold hover:border-gray-500' }, 'RENAME'),
+                            e('button', { onClick: deleteCase, className:'w-full px-2 py-2 rounded bg-red-500/10 border border-red-500/40 text-[10px] font-bold' }, 'DELETE')
+                        ),
+                        e('div', { className: 'mt-2 text-[10px] text-gray-500' }, currentCase ? `Active: ${currentCase.name}` : '')
+                    ),
+
+                    // Notes list
+                    e('div', { className: 'col-span-3 rounded border border-gray-700 bg-black/30 p-3 space-y-2' },
+                        e('div', { className: 'flex gap-2' },
+                            e('input', {
+                                value: noteQuery,
+                                onChange: (ev)=>setNoteQuery(ev.target.value),
+                                placeholder:'Search notes…',
+                                className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm'
+                            }),
                             e('button', { onClick: createNote, className: 'px-3 py-2 rounded bg-[#00ff41]/10 border border-[#00ff41]/50 text-xs font-bold' }, 'NEW')
                         ),
-                        e('div', { className: 'space-y-2 max-h-[420px] overflow-auto pr-1' },
-                            ...filtered.map(n => e('button', {
-                                key: n.id,
-                                onClick: () => setActiveNoteId(n.id),
-                                className: `w-full text-left p-2 rounded border ${n.id===activeNoteId ? 'border-[#00ff41]/60 bg-[#00ff41]/10' : 'border-gray-800 bg-black/20 hover:border-gray-600'}`
+                        e('div', { className: 'flex gap-2 items-center' },
+                            e('select', {
+                                onChange: (ev) => { const v = ev.target.value; if (v) applyTemplate(v); ev.target.value=''; },
+                                className:'w-full px-2 py-2 rounded bg-black/40 border border-gray-700 text-xs'
                             },
-                                e('div', { className: 'text-sm font-bold text-gray-200' }, n.title),
-                                e('div', { className: 'text-xs text-gray-500' }, new Date(n.updatedAt).toLocaleString())
-                            ))
+                                e('option', { value:'' }, 'Insert Template…'),
+                                ...Object.keys(templates).map(k => e('option', { key:k, value:k }, k))
+                            )
+                        ),
+                        e('div', { className: 'flex flex-wrap gap-1' },
+                            e('button', {
+                                onClick: ()=>setTagFilter(''),
+                                className:`px-2 py-1 rounded border text-[10px] ${tagFilter ? 'border-gray-700 bg-black/30 text-gray-400' : 'border-[#00ff41]/40 bg-[#00ff41]/10 text-[#00ff41]'}`
+                            }, 'ALL'),
+                            ...Array.from(new Set(notes.flatMap(n => extractTags(n.body)))).sort().slice(0, 12).map(t =>
+                                e('button', {
+                                    key:t,
+                                    onClick: ()=>setTagFilter(t),
+                                    className:`px-2 py-1 rounded border text-[10px] ${tagFilter===t ? 'border-[#00ff41]/50 bg-[#00ff41]/10 text-[#00ff41]' : 'border-gray-700 bg-black/30 text-gray-400 hover:border-gray-500'}`
+                                }, `#${t}`)
+                            )
+                        ),
+                        e('div', { className: 'space-y-2 max-h-[420px] overflow-auto pr-1' },
+                            ...filteredNotes.map(n => {
+                                const isActive = activeNote && n.id === activeNote.id;
+                                const tags = extractTags(n.body).slice(0,3);
+                                return e('button', {
+                                    key: n.id,
+                                    onClick: () => setActiveNoteId(n.id),
+                                    className: `w-full text-left p-2 rounded border ${isActive ? 'border-[#00ff41]/60 bg-[#00ff41]/10' : 'border-gray-800 bg-black/20 hover:border-gray-600'}`
+                                },
+                                    e('div', { className: 'text-sm font-bold text-gray-200 truncate' }, n.title),
+                                    e('div', { className: 'text-[10px] text-gray-500 flex justify-between' },
+                                        e('span', null, new Date(n.updatedAt||n.createdAt||Date.now()).toLocaleString()),
+                                        e('span', { className:'text-gray-600' }, tags.length ? tags.map(t=>`#${t}`).join(' ') : '')
+                                    )
+                                );
+                            })
                         )
                     ),
-                    e('div', { className: 'col-span-8 space-y-3' },
+
+                    // Editor / Preview
+                    e('div', { className: 'col-span-6 space-y-3' },
                         !activeNote ? e('div', { className: 'p-6 rounded border border-gray-700 bg-black/30 text-gray-400' }, 'Create or select a note.') :
                         e(React.Fragment, null,
-                            e('input', { value: activeNote.title, onChange: (ev)=>updateNote({ title: ev.target.value }), className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm font-bold text-gray-200' }),
-                            e('textarea', { value: activeNote.body, onChange: (ev)=>updateNote({ body: ev.target.value }), placeholder:'# Markdown…', className:'w-full h-64 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
-                            e('div', { className: 'flex gap-2' },
-                                e('button', { onClick: () => sendToWorkspace(activeNote.body, '', { type:'note', title: activeNote.title }), className:'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND NOTE → WORKSPACE'),
-                                e('button', { onClick: deleteNote, className:'w-full px-3 py-2 bg-red-500/10 border border-red-500/40 rounded text-xs font-bold' }, 'DELETE')
+                            e('div', { className:'flex gap-2 items-center' },
+                                e('input', {
+                                    value: activeNote.title,
+                                    onChange: (ev)=>updateActiveNote({ title: ev.target.value }),
+                                    className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm font-bold text-gray-200'
+                                }),
+                                e('button', { onClick: deleteNote, className:'px-3 py-2 bg-red-500/10 border border-red-500/40 rounded text-xs font-bold' }, 'DEL')
+                            ),
+                            e('div', { className:'flex flex-wrap gap-1 items-center' },
+                                e('span', { className:'text-[10px] text-gray-500 mr-1' }, 'TAGS:'),
+                                ...(activeTags.length ? activeTags.map(t => e('button', {
+                                    key:t,
+                                    onClick: ()=>setTagFilter(t),
+                                    className:'px-2 py-1 rounded border border-gray-700 bg-black/30 text-[10px] text-gray-300 hover:border-gray-500'
+                                }, `#${t}`)) : [e('span', { key:'none', className:'text-[10px] text-gray-600' }, 'none')]),
+                                e('div', { className:'ml-auto flex gap-2' },
+                                    e('button', { onClick: ()=>insertAtCursor('[[New Note]]'), className:'px-2 py-1 rounded border border-gray-700 bg-black/30 text-[10px] hover:border-gray-500' }, '[[link]]'),
+                                    e('button', { onClick: ()=>insertAtCursor('\n\n## '), className:'px-2 py-1 rounded border border-gray-700 bg-black/30 text-[10px] hover:border-gray-500' }, '+ heading'),
+                                    e('button', { onClick: ()=>insertAtCursor('\n- [ ] '), className:'px-2 py-1 rounded border border-gray-700 bg-black/30 text-[10px] hover:border-gray-500' }, '+ task')
+                                )
+                            ),
+                            e('div', { className: splitView ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3' },
+                                e('textarea', {
+                                    ref: editorRef,
+                                    value: activeNote.body,
+                                    onChange: (ev)=>updateActiveNote({ body: ev.target.value }),
+                                    placeholder:'# Markdown…',
+                                    className:'w-full h-[420px] bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none focus:border-[#00ff41]/40 focus:outline-none'
+                                }),
+                                splitView ? e('div', {
+                                    className:'w-full h-[420px] bg-black/30 border border-gray-700 rounded p-3 overflow-auto text-sm',
+                                    dangerouslySetInnerHTML: { __html: mdToHtml(activeNote.body) }
+                                }) : null
+                            ),
+
+                            e('div', { className:'rounded border border-gray-700 bg-black/20 p-3' },
+                                e('div', { className:'flex items-center justify-between mb-2' },
+                                    e('div', { className:'text-xs text-gray-400' }, 'BACKLINKS'),
+                                    e('div', { className:'text-xs text-gray-500' }, backlinks.length ? `${backlinks.length} ref(s)` : 'none')
+                                ),
+                                backlinks.length ? e('div', { className:'flex flex-wrap gap-2' },
+                                    ...backlinks.map(n => e('button', {
+                                        key:n.id,
+                                        onClick: ()=>setActiveNoteId(n.id),
+                                        className:'px-3 py-2 rounded border border-gray-700 bg-black/30 text-xs hover:border-gray-500'
+                                    }, n.title))
+                                ) : e('div', { className:'text-xs text-gray-600' }, 'No notes reference this note yet. Use [[Note Title]] links.')
+                            ),
+
+                            e('div', { className:'rounded border border-gray-700 bg-black/20 p-3' },
+                                e('div', { className:'text-xs text-gray-400 mb-2' }, 'LINKS IN THIS NOTE'),
+                                (() => {
+                                    const links = extractLinks(activeNote.body);
+                                    if (!links.length) return e('div', { className:'text-xs text-gray-600' }, 'No [[links]] found.');
+                                    return e('div', { className:'flex flex-wrap gap-2' },
+                                        ...links.map((t, idx) => e('button', {
+                                            key: idx,
+                                            onClick: ()=>jumpToLinkedNote(t),
+                                            className:'px-3 py-2 rounded border border-gray-700 bg-black/30 text-xs hover:border-gray-500'
+                                        }, `[[${t}]]`))
+                                    );
+                                })()
                             )
                         )
                     )
