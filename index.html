@@ -10,7 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden;  background:#0a0e1a; color:#e0e0e0; }
+        body { margin: 0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden; }
         h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
         @keyframes gridScroll { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
         @keyframes glowPulse { 0%, 100% { filter: drop-shadow(0 0 8px currentColor); } 50% { filter: drop-shadow(0 0 16px currentColor); } }
@@ -21,37 +21,7 @@
     </style>
 </head>
 <body>
-    <div id="root" style="padding:16px;font-family:JetBrains Mono,monospace;">Loading CYPHER//TOOLKIT… (If this stays, open DevTools Console)</div>
-<script>
-(function(){
-  function show(msg){
-    try{
-      var pre=document.getElementById('fatal-error');
-      if(!pre){
-        pre=document.createElement('pre');
-        pre.id='fatal-error';
-        pre.style.cssText='white-space:pre-wrap;max-width:1100px;margin:16px auto;padding:16px;border:1px solid rgba(0,255,65,.4);background:rgba(0,0,0,.35);color:#ff5c5c;border-radius:12px;font:13px/1.4 JetBrains Mono,monospace;';
-        document.body.insertBefore(pre, document.body.firstChild.nextSibling);
-      }
-      pre.textContent = msg;
-    }catch(e){}
-  }
-  window.addEventListener('error', function(ev){
-    show('🚨 App crashed (window.error)\n' + (ev.message||'') + '\n' + (ev.filename||'') + ':' + (ev.lineno||0) + ':' + (ev.colno||0));
-  });
-  window.addEventListener('unhandledrejection', function(ev){
-    show('🚨 Unhandled Promise Rejection\n' + (ev.reason && (ev.reason.stack||ev.reason.message) || String(ev.reason)));
-  });
-  window.__CY_FATAL__ = show;
-  // sanity checks after 1s
-  setTimeout(function(){
-    if(!window.React || !window.ReactDOM){
-      show('🚨 React libraries failed to load.\nCheck network access to unpkg.com / react-dom.');
-    }
-  }, 1000);
-})();
-</script>
-
+    <div id="root"></div>
     
 <script type="application/json" id="payload-library-data">
 {
@@ -288,7 +258,7 @@
             Fingerprint: (p) => Icon({ ...p, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' }),
             Key: (p) => Icon({ ...p, d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' })
         };
-        const { useState } = React;
+        const { useState, useEffect, useMemo } = React;
         const e = React.createElement;
         
         // Payload library is stored as JSON (not inline JS) to prevent HTML parsing issues with payload content.
@@ -1660,7 +1630,7 @@ const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${cou
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', mountApp);
         } else {
-  try { mountApp(); } catch(e){ (window.__CY_FATAL__||console.error)('🚨 mountApp exception\\n' + (e && (e.stack||e.message) || e)); }
+            mountApp();
         }
     </script>
 </body>
