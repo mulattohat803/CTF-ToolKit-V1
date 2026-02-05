@@ -275,15 +275,20 @@
 function CTFToolkit() {
             const [activeCategory, setActiveCategory] = useState('crypto');
             const [activeTool, setActiveTool] = useState('multi-codec');
+            const [workspaceData, setWorkspaceData] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('cypher_workspace') || '{"text":"","hex":"","meta":{}}'); } catch(e){ return { text:'', hex:'', meta:{} }; }
+            });
+            useEffect(() => { try { localStorage.setItem('cypher_workspace', JSON.stringify(workspaceData)); } catch(e){} }, [workspaceData]);
+
             const categories = [
                 { id: 'crypto', name: 'Cryptography', icon: 'Lock', color: '#00ff41' },
                 { id: 'web', name: 'Web Exploitation', icon: 'Globe', color: '#00d9ff' },
                 { id: 'forensics', name: 'Forensics', icon: 'Eye', color: '#ff00ff' },
                 { id: 'binary', name: 'Binary/Reversing', icon: 'Cpu', color: '#ffaa00' },
                 { id: 'osint', name: 'OSINT/Recon', icon: 'Search', color: '#ff0055' }
-            ];
-            const tools = {
-                crypto: [
+            ,
+                { id: 'workspace', name: 'Workspace', icon: 'Folder', color: '#7c3aed' }];
+            const tools = {crypto: [
                     { id: 'multi-codec', name: 'Multi-Codec Engine', desc: 'Advanced encoding/decoding with auto-detection' },
                     { id: 'hash-analysis', name: 'Hash Analyzer', desc: 'Hash identification & generation' },
                     { id: 'xor-bruteforce', name: 'XOR Bruteforcer', desc: 'Multi-key XOR analysis with scoring' },
@@ -297,6 +302,9 @@ function CTFToolkit() {
                     { id: 'html-encoder', name: 'HTML Encoder', desc: 'HTML entity encoding' }
                 ],
                 forensics: [
+                    { id: 'meta-viewer', name: 'Metadata Viewer', desc: 'Basic file + image metadata' },
+                    { id: 'entropy-graph', name: 'Entropy Graph', desc: 'Spot encryption/packing quickly' },
+                    { id: 'hash-calc', name: 'Hash Calculator', desc: 'MD5/SHA1/SHA256 for IOCs' },
                     { id: 'hex-editor', name: 'Hex Editor Pro', desc: 'Hex/text conversion & search' },
                     { id: 'file-analyzer', name: 'File Signature Analyzer', desc: 'Identify by magic bytes' },
                     { id: 'string-extractor', name: 'String Extractor', desc: 'Extract ASCII strings' },
@@ -305,6 +313,9 @@ function CTFToolkit() {
                     { id: 'regex-lab', name: 'Regex Lab', desc: 'Test regex, extract matches' }
                 ],
                 binary: [
+                    { id: 'pattern-finder', name: 'Byte Pattern Finder', desc: 'Search hex sequences + offsets' },
+                    { id: 'strings-regex', name: 'Strings + Regex', desc: 'Extract strings + find flags/tokens' },
+                    { id: 'header-viewer', name: 'PE/ELF Header Viewer', desc: 'Quick header + entry point' },
                     { id: 'ascii-converter', name: 'ASCII Converter', desc: 'ASCII code conversion' },
                     { id: 'endian-converter', name: 'Endian Converter', desc: 'Byte order swap' },
                     { id: 'bit-manipulator', name: 'Bit Manipulator', desc: 'Bitwise operations' },
@@ -319,6 +330,10 @@ function CTFToolkit() {
                     { id: 'timestamp-converter', name: 'Timestamp Converter', desc: 'Unix ↔ human time' },
                     { id: 'cidr-calculator', name: 'CIDR/Subnet Calculator', desc: 'Network ranges & hosts' }
                 ]
+                workspace: [
+                    { id: 'workspace-hub', name: 'Workspace Hub', desc: 'Send data between tools, export cases' },
+                    { id: 'notes-vault', name: 'Notes Vault', desc: 'Markdown notes + search + export' }
+                ],
             };
             const currentCategory = categories.find(c => c.id === activeCategory);
             const currentTools = tools[activeCategory] || [];
@@ -396,23 +411,34 @@ function CTFToolkit() {
                                 )
                             ),
                             e('div', { className: 'terminal-border border-[#00ff41]/30 bg-[#0f1419]/80 backdrop-blur-sm rounded-lg p-6' },
-                                e(ToolInterface, { category: activeCategory, tool: activeTool, color: currentCategory.color })
+                                e(ToolInterface, { category: activeCategory, tool: activeTool, color: currentCategory.color, workspaceData, setWorkspaceData })
                             )
                         )
                     )
                 )
             );
         }
-        function ToolInterface({ category, tool, color }) {
+        function ToolInterface({ category, tool, color, workspaceData, setWorkspaceData }) {
             const [input, setInput] = useState('');
+            
             const [output, setOutput] = useState('');
             const [fileName, setFileName] = useState('');
+            const [fileBytes, setFileBytes] = useState(null);
             const [fileError, setFileError] = useState('');
+            const [minStringLen, setMinStringLen] = useState(4);
+            const [patternHex, setPatternHex] = useState('');
+            const [patternResults, setPatternResults] = useState('');
 
             const bytesToHex = (u8) => Array.from(u8).map(b => b.toString(16).padStart(2,'0')).join('');
-            const decodeBytes = (u8) => {
-                try { return new TextDecoder('utf-8', { fatal:false }).decode(u8); } catch(e) { return ''; }
+            const bytesToSpacedHex = (u8, cols=16) => {
+                let out = '';
+                for (let i=0;i<u8.length;i++){
+                    out += u8[i].toString(16).padStart(2,'0') + ' ';
+                    if ((i+1) % cols === 0) out += '\n';
+                }
+                return out.trim();
             };
+            const decodeBytes = (u8) => { try { return new TextDecoder('utf-8', { fatal:false }).decode(u8); } catch(e){ return ''; } };
             const extractStrings = (u8, minLen=4) => {
                 const out = [];
                 let cur = '';
@@ -420,10 +446,7 @@ function CTFToolkit() {
                     const c = u8[i];
                     const ch = (c>=32 && c<=126) ? String.fromCharCode(c) : null;
                     if (ch) cur += ch;
-                    else {
-                        if (cur.length >= minLen) out.push(cur);
-                        cur = '';
-                    }
+                    else { if (cur.length >= minLen) out.push(cur); cur=''; }
                 }
                 if (cur.length >= minLen) out.push(cur);
                 return out;
@@ -436,37 +459,240 @@ function CTFToolkit() {
                 r.readAsArrayBuffer(file);
             });
 
-            const FileLoader = ({ label, onBytes, help }) => {
-                return e('div', { className: 'flex flex-col gap-2 p-3 rounded border border-gray-700 bg-black/30' },
+            const handleLoadedBytes = (u8, f) => {
+                setFileBytes(u8);
+                setFileError('');
+                setFileName(f && f.name ? f.name : '');
+            };
+
+            const FileDropZone = ({ label, help, onBytes }) => {
+                const onPick = async (file) => {
+                    if (!file) return;
+                    setFileError('');
+                    setFileName(file.name);
+                    try {
+                        const u8 = await readFileAsBytes(file);
+                        handleLoadedBytes(u8, file);
+                        if (onBytes) onBytes(u8, file);
+                    } catch (err) {
+                        console.error(err);
+                        setFileError('Could not read file.');
+                    }
+                };
+
+                return e('div', {
+                        className: 'p-4 rounded-lg border border-gray-700 bg-black/30',
+                        onDragOver: (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; },
+                        onDrop: (ev) => {
+                            ev.preventDefault();
+                            const f = ev.dataTransfer.files && ev.dataTransfer.files[0];
+                            onPick(f);
+                        }
+                    },
                     e('div', { className: 'flex items-center justify-between gap-3' },
-                        e('div', { className: 'text-xs text-gray-300' }, label),
-                        e('label', { className: 'cursor-pointer px-3 py-1 rounded bg-[#00ff41]/10 border border-[#00ff41]/60 text-xs font-bold hover:bg-[#00ff41]/15' },
+                        e('div', null,
+                            e('div', { className: 'text-sm font-bold text-gray-200' }, label),
+                            help ? e('div', { className: 'text-xs text-gray-500 mt-1' }, help) : null
+                        ),
+                        e('label', { className: 'cursor-pointer px-3 py-2 rounded bg-[#00ff41]/10 border border-[#00ff41]/60 text-xs font-bold hover:bg-[#00ff41]/15' },
                             'UPLOAD',
-                            e('input', {
-                                type: 'file',
-                                className: 'hidden',
-                                onChange: async (ev) => {
-                                    const f = ev.target.files && ev.target.files[0];
-                                    if (!f) return;
-                                    setFileError('');
-                                    setFileName(f.name);
-                                    try {
-                                        const u8 = await readFileAsBytes(f);
-                                        onBytes(u8, f);
-                                    } catch (err) {
-                                        console.error(err);
-                                        setFileError('Could not read file.');
-                                    } finally {
-                                        ev.target.value = '';
-                                    }
-                                }
-                            })
+                            e('input', { type: 'file', className: 'hidden', onChange: (ev) => { const f = ev.target.files && ev.target.files[0]; ev.target.value=''; onPick(f); } })
                         )
                     ),
-                    (fileName ? e('div', { className: 'text-xs text-gray-400' }, `File: ${fileName}`) : null),
-                    (help ? e('div', { className: 'text-xs text-gray-500' }, help) : null),
-                    (fileError ? e('div', { className: 'text-xs text-red-400' }, fileError) : null)
+                    fileName ? e('div', { className: 'text-xs text-gray-400 mt-2' }, `File: ${fileName} (${fileBytes ? fileBytes.length : 0} bytes)`) : null,
+                    fileError ? e('div', { className: 'text-xs text-red-400 mt-2' }, fileError) : null
                 );
+            };
+
+            const sendToWorkspace = (text, hex, meta) => {
+                setWorkspaceData({
+                    text: (text ?? workspaceData.text ?? ''),
+                    hex: (hex ?? workspaceData.hex ?? ''),
+                    meta: meta ?? workspaceData.meta ?? {}
+                });
+            };
+
+            // ---- Hashing (SHA1/SHA256 via SubtleCrypto; MD5 via tiny JS impl) ----
+            const md5 = (function(){
+              function cmn(q,a,b,x,s,t){a=(a+q+x+t)&0xFFFFFFFF;return (((a<<s)|(a>>> (32-s)))+b)&0xFFFFFFFF;}
+              function ff(a,b,c,d,x,s,t){return cmn((b&c)|((~b)&d),a,b,x,s,t);}
+              function gg(a,b,c,d,x,s,t){return cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+              function hh(a,b,c,d,x,s,t){return cmn(b^c^d,a,b,x,s,t);}
+              function ii(a,b,c,d,x,s,t){return cmn(c^(b|(~d)),a,b,x,s,t);}
+              function toBytes(u8){const arr=[];for(let i=0;i<u8.length;i++)arr.push(u8[i]);return arr;}
+              function md5bytes(u8){
+                const msg = toBytes(u8);
+                const origLen = msg.length;
+                msg.push(0x80);
+                while((msg.length % 64) !== 56) msg.push(0);
+                const bitLen = origLen * 8;
+                for(let i=0;i<8;i++) msg.push((bitLen >>> (8*i)) & 0xFF);
+                let a=0x67452301,b=0xEFCDAB89,c=0x98BADCFE,d=0x10325476;
+                for(let i=0;i<msg.length;i+=64){
+                  const x=new Array(16);
+                  for(let j=0;j<16;j++){
+                    x[j]= msg[i+4*j] | (msg[i+4*j+1]<<8) | (msg[i+4*j+2]<<16) | (msg[i+4*j+3]<<24);
+                  }
+                  let aa=a,bb=b,cc=c,dd=d;
+                  a=ff(a,b,c,d,x[0],7,-680876936); d=ff(d,a,b,c,x[1],12,-389564586); c=ff(c,d,a,b,x[2],17,606105819); b=ff(b,c,d,a,x[3],22,-1044525330);
+                  a=ff(a,b,c,d,x[4],7,-176418897); d=ff(d,a,b,c,x[5],12,1200080426); c=ff(c,d,a,b,x[6],17,-1473231341); b=ff(b,c,d,a,x[7],22,-45705983);
+                  a=ff(a,b,c,d,x[8],7,1770035416); d=ff(d,a,b,c,x[9],12,-1958414417); c=ff(c,d,a,b,x[10],17,-42063); b=ff(b,c,d,a,x[11],22,-1990404162);
+                  a=ff(a,b,c,d,x[12],7,1804603682); d=ff(d,a,b,c,x[13],12,-40341101); c=ff(c,d,a,b,x[14],17,-1502002290); b=ff(b,c,d,a,x[15],22,1236535329);
+                  a=gg(a,b,c,d,x[1],5,-165796510); d=gg(d,a,b,c,x[6],9,-1069501632); c=gg(c,d,a,b,x[11],14,643717713); b=gg(b,c,d,a,x[0],20,-373897302);
+                  a=gg(a,b,c,d,x[5],5,-701558691); d=gg(d,a,b,c,x[10],9,38016083); c=gg(c,d,a,b,x[15],14,-660478335); b=gg(b,c,d,a,x[4],20,-405537848);
+                  a=gg(a,b,c,d,x[9],5,568446438); d=gg(d,a,b,c,x[14],9,-1019803690); c=gg(c,d,a,b,x[3],14,-187363961); b=gg(b,c,d,a,x[8],20,1163531501);
+                  a=gg(a,b,c,d,x[13],5,-1444681467); d=gg(d,a,b,c,x[2],9,-51403784); c=gg(c,d,a,b,x[7],14,1735328473); b=gg(b,c,d,a,x[12],20,-1926607734);
+                  a=hh(a,b,c,d,x[5],4,-378558); d=hh(d,a,b,c,x[8],11,-2022574463); c=hh(c,d,a,b,x[11],16,1839030562); b=hh(b,c,d,a,x[14],23,-35309556);
+                  a=hh(a,b,c,d,x[1],4,-1530992060); d=hh(d,a,b,c,x[4],11,1272893353); c=hh(c,d,a,b,x[7],16,-155497632); b=hh(b,c,d,a,x[10],23,-1094730640);
+                  a=hh(a,b,c,d,x[13],4,681279174); d=hh(d,a,b,c,x[0],11,-358537222); c=hh(c,d,a,b,x[3],16,-722521979); b=hh(b,c,d,a,x[6],23,76029189);
+                  a=hh(a,b,c,d,x[9],4,-640364487); d=hh(d,a,b,c,x[12],11,-421815835); c=hh(c,d,a,b,x[15],16,530742520); b=hh(b,c,d,a,x[2],23,-995338651);
+                  a=ii(a,b,c,d,x[0],6,-198630844); d=ii(d,a,b,c,x[7],10,1126891415); c=ii(c,d,a,b,x[14],15,-1416354905); b=ii(b,c,d,a,x[5],21,-57434055);
+                  a=ii(a,b,c,d,x[12],6,1700485571); d=ii(d,a,b,c,x[3],10,-1894986606); c=ii(c,d,a,b,x[10],15,-1051523); b=ii(b,c,d,a,x[1],21,-2054922799);
+                  a=ii(a,b,c,d,x[8],6,1873313359); d=ii(d,a,b,c,x[15],10,-30611744); c=ii(c,d,a,b,x[6],15,-1560198380); b=ii(b,c,d,a,x[13],21,1309151649);
+                  a=ii(a,b,c,d,x[4],6,-145523070); d=ii(d,a,b,c,x[11],10,-1120210379); c=ii(c,d,a,b,x[2],15,718787259); b=ii(b,c,d,a,x[9],21,-343485551);
+                  a=(a+aa)&0xFFFFFFFF; b=(b+bb)&0xFFFFFFFF; c=(c+cc)&0xFFFFFFFF; d=(d+dd)&0xFFFFFFFF;
+                }
+                const out = new Uint8Array(16);
+                const words=[a,b,c,d];
+                for(let i=0;i<4;i++){
+                  out[i*4]=words[i]&0xFF;
+                  out[i*4+1]=(words[i]>>>8)&0xFF;
+                  out[i*4+2]=(words[i]>>>16)&0xFF;
+                  out[i*4+3]=(words[i]>>>24)&0xFF;
+                }
+                return out;
+              }
+              return function(u8){ return bytesToHex(md5bytes(u8)); };
+            })();
+
+            const digestHex = async (algo, u8) => {
+                const buf = await crypto.subtle.digest(algo, u8);
+                return bytesToHex(new Uint8Array(buf));
+            };
+
+            const computeHashes = async () => {
+                if (!fileBytes) { setOutput('Load a file first.'); return; }
+                setOutput('Computing hashes…');
+                try {
+                    const md5h = md5(fileBytes);
+                    const sha1 = await digestHex('SHA-1', fileBytes);
+                    const sha256 = await digestHex('SHA-256', fileBytes);
+                    setOutput(`MD5:    ${md5h}\nSHA1:   ${sha1}\nSHA256: ${sha256}`);
+                } catch (e) {
+                    console.error(e);
+                    setOutput('Hashing failed (browser crypto not available).');
+                }
+            };
+
+            // ---- Entropy graph ----
+            const calcEntropy = (u8) => {
+                const freq = new Array(256).fill(0);
+                for (let i=0;i<u8.length;i++) freq[u8[i]]++;
+                const n = u8.length;
+                let h = 0;
+                for (let i=0;i<256;i++){
+                    if (!freq[i]) continue;
+                    const p = freq[i] / n;
+                    h -= p * Math.log2(p);
+                }
+                return h;
+            };
+            const drawEntropy = (canvasId='entropyCanvas') => {
+                const c = document.getElementById(canvasId);
+                if (!c || !fileBytes) return;
+                const ctx = c.getContext('2d');
+                const w = c.width, h = c.height;
+                ctx.clearRect(0,0,w,h);
+
+                const block = 1024;
+                const vals = [];
+                for (let i=0;i<fileBytes.length;i+=block){
+                    vals.push(calcEntropy(fileBytes.slice(i, Math.min(i+block, fileBytes.length))));
+                }
+                const max = 8.0;
+                // axes
+                ctx.globalAlpha = 0.35;
+                ctx.fillStyle = '#00ff41';
+                ctx.fillRect(0,h-1,w,1);
+                ctx.globalAlpha = 1.0;
+
+                ctx.strokeStyle = '#00ff41';
+                ctx.beginPath();
+                for (let i=0;i<vals.length;i++){
+                    const x = (i/(vals.length-1 || 1)) * (w-2) + 1;
+                    const y = h - ((vals[i]/max) * (h-10) + 5);
+                    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                }
+                ctx.stroke();
+
+                // label
+                ctx.fillStyle = '#e0e0e0';
+                ctx.font = '12px monospace';
+                ctx.fillText(`Blocks: ${vals.length} (1KB)`, 8, 16);
+            };
+
+            // ---- PE/ELF header quick view ----
+            const parseHeaders = () => {
+                if (!fileBytes) { setOutput('Load a file first.'); return; }
+                const u8 = fileBytes;
+                const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+                const hex4 = (v) => '0x' + v.toString(16);
+                const readU16 = (o) => dv.getUint16(o, true);
+                const readU32 = (o) => dv.getUint32(o, true);
+                const readU64 = (o) => Number(dv.getBigUint64(o, true));
+                const head = String.fromCharCode(...u8.slice(0,4));
+
+                // ELF
+                if (u8[0]===0x7f && u8[1]===0x45 && u8[2]===0x4c && u8[3]===0x46) {
+                    const cls = u8[4]===1 ? 'ELF32' : (u8[4]===2 ? 'ELF64' : 'Unknown');
+                    const endian = u8[5]===1 ? 'Little' : (u8[5]===2 ? 'Big' : 'Unknown');
+                    let entry = 0;
+                    try { entry = (u8[4]===2) ? readU64(0x18) : readU32(0x18); } catch(e){}
+                    setOutput(`ELF Header\nClass: ${cls}\nEndian: ${endian}\nEntry: ${hex4(entry)}\n`);
+                    return;
+                }
+
+                // PE (MZ + PE\0\0)
+                if (u8[0]===0x4d && u8[1]===0x5a) {
+                    const e_lfanew = readU32(0x3c);
+                    if (e_lfanew > 0 && e_lfanew + 4 < u8.length) {
+                        const sig = String.fromCharCode(...u8.slice(e_lfanew, e_lfanew+4));
+                        if (sig === 'PE\u0000\u0000') {
+                            const machine = readU16(e_lfanew + 4);
+                            const sections = readU16(e_lfanew + 6);
+                            const optMagic = readU16(e_lfanew + 24);
+                            const isPE32Plus = optMagic === 0x20b;
+                            const entryRVA = readU32(e_lfanew + 40);
+                            let imageBase = 0;
+                            try {
+                                imageBase = isPE32Plus ? readU64(e_lfanew + 24 + 24) : readU32(e_lfanew + 24 + 28);
+                            } catch(e){}
+                            setOutput(`PE Header\nMachine: ${hex4(machine)}\nSections: ${sections}\nPE: ${isPE32Plus ? 'PE32+' : 'PE32'}\nEntryRVA: ${hex4(entryRVA)}\nImageBase: ${hex4(imageBase)}\n`);
+                            return;
+                        }
+                    }
+                }
+
+                setOutput('Unknown file format (not ELF/PE).');
+            };
+
+            // ---- Byte pattern finder ----
+            const findPattern = () => {
+                if (!fileBytes) { setOutput('Load a file first.'); return; }
+                const clean = (patternHex || '').replace(/[^0-9a-f]/gi,'').toLowerCase();
+                if (clean.length < 2 || clean.length % 2 !== 0) { setPatternResults('Enter an even-length hex pattern.'); return; }
+                const pat = new Uint8Array(clean.length/2);
+                for (let i=0;i<pat.length;i++) pat[i] = parseInt(clean.substr(i*2,2),16);
+                const hits = [];
+                const u8 = fileBytes;
+                outer: for (let i=0;i<=u8.length-pat.length;i++){
+                    for (let j=0;j<pat.length;j++){ if (u8[i+j] !== pat[j]) continue outer; }
+                    hits.push(i);
+                    if (hits.length >= 200) break;
+                }
+                const txt = hits.length ? hits.map(o => `0x${o.toString(16)} (${o})`).join('\n') : 'No matches';
+                setPatternResults(txt);
+                setOutput(`Pattern hits: ${hits.length}\n\n${txt}`);
             };
 
 
@@ -831,20 +1057,6 @@ const extract = () => { const regex = new RegExp(`[\\x20-\\x7E]{${minLen},}`, 'g
             // BINARY CONVERTER
             if (tool === 'binary-converter') {
                 return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Binary Converter'),
-                    e(FileLoader, {
-                        label: 'Upload a file to convert / inspect',
-                        help: 'Fills input with UTF-8 preview; output includes HEX + Base64 (first 64KB).',
-                        onBytes: (u8) => {
-                            const slice = u8.slice(0, 65536);
-                            setInput(decodeBytes(slice));
-                            const hex = bytesToHex(slice);
-                            let b64 = '';
-                            try {
-                                b64 = btoa(String.fromCharCode(...slice));
-                            } catch(e) { b64 = '(Base64 preview not available for this file in this browser)'; }
-                            setOutput(`HEX (first 64KB)\n${hex}\n\nBASE64 (first 64KB)\n${b64}`);
-                        }
-                    }),
                     e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none' }),
                     e('div', { className: 'grid grid-cols-3 gap-2' }, e('button', { onClick: () => setOutput(Array.from(input).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' ')), className: 'px-3 py-2 bg-blue-600/20 border border-blue-500 rounded text-xs font-bold' }, 'TO HEX'), e('button', { onClick: () => { try { setOutput(btoa(input)); } catch(e) { setOutput('Error'); }}, className: 'px-3 py-2 bg-purple-600/20 border border-purple-500 rounded text-xs font-bold' }, 'TO BASE64'), e('button', { onClick: () => setOutput(input.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' ')), className: 'px-3 py-2 bg-green-600/20 border border-green-500 rounded text-xs font-bold' }, 'TO BINARY')),
                     e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
@@ -1146,6 +1358,246 @@ const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${cou
                         e('button', { onClick: () => copyToClipboard(output), className: 'px-4 py-2 bg-[#00ff41]/10 hover:bg-[#00ff41]/20 border border-[#00ff41]/60 rounded text-[#00ff41] font-bold' }, 'COPY')
                     ),
                     e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            
+            // HASH CALCULATOR
+            if (tool === 'hash-calc') {
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Hash Calculator'),
+                    e(FileDropZone, { label: 'Drop a file here or upload', help: 'Computes MD5/SHA1/SHA256 locally in your browser.', onBytes: (u8) => { setOutput(`Loaded ${u8.length} bytes. Click COMPUTE.`); } }),
+                    e('button', { onClick: computeHashes, className: 'w-full px-4 py-3 bg-[#00ff41]/15 border border-[#00ff41]/60 rounded text-xs font-bold hover:bg-[#00ff41]/20' }, 'COMPUTE HASHES'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: () => sendToWorkspace(output, '', { type: 'hashes', fileName }), className: 'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND → WORKSPACE')
+                    )
+                );
+            }
+
+            // METADATA VIEWER (basic + image dimensions + JPEG EXIF (limited))
+            if (tool === 'meta-viewer') {
+                const parseBasicMeta = (u8, f) => {
+                    let info = [];
+                    info.push(`Name: ${f && f.name ? f.name : fileName}`);
+                    info.push(`Size: ${u8.length} bytes`);
+                    if (f && f.type) info.push(`MIME: ${f.type}`);
+                    if (f && f.lastModified) info.push(`Last modified: ${new Date(f.lastModified).toLocaleString()}`);
+                    // magic
+                    const head = bytesToHex(u8.slice(0,16));
+                    info.push(`Head (16B): ${head}`);
+                    setOutput(info.join('\\n'));
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Metadata Viewer'),
+                    e(FileDropZone, { label: 'Drop a file here or upload', help: 'Shows basic info + image dimensions where possible (client-side).', onBytes: (u8, f) => { parseBasicMeta(u8, f); } }),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: () => sendToWorkspace(output, '', { type: 'metadata', fileName }), className: 'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND → WORKSPACE')
+                    )
+                );
+            }
+
+            // ENTROPY GRAPH
+            if (tool === 'entropy-graph') {
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Entropy Graph'),
+                    e(FileDropZone, { label: 'Drop a file here or upload', help: 'Plots Shannon entropy per 1KB block (0–8). High entropy often indicates compression/encryption.', onBytes: () => { setOutput('Loaded. Click DRAW.'); } }),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: () => { drawEntropy('entropyCanvas'); }, className: 'w-full px-4 py-3 bg-[#00d9ff]/15 border border-[#00d9ff]/60 rounded text-xs font-bold' }, 'DRAW'),
+                        e('button', { onClick: () => { setOutput(fileBytes ? `Overall entropy: ${calcEntropy(fileBytes).toFixed(4)}` : 'Load a file first.'); }, className: 'w-full px-4 py-3 bg-[#ff00ff]/15 border border-[#ff00ff]/60 rounded text-xs font-bold' }, 'OVERALL ENTROPY')
+                    ),
+                    e('div', { className: 'p-3 rounded border border-gray-700 bg-black/30' },
+                        e('canvas', { id: 'entropyCanvas', width: 900, height: 180, className: 'w-full rounded bg-black/60 border border-gray-800' })
+                    ),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                    e('button', { onClick: () => sendToWorkspace(output, '', { type: 'entropy', fileName }), className: 'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND → WORKSPACE')
+                );
+            }
+
+            // HEADER VIEWER (PE/ELF)
+            if (tool === 'header-viewer') {
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'PE/ELF Header Viewer'),
+                    e(FileDropZone, { label: 'Drop a binary here or upload', help: 'Quickly identifies ELF/PE and shows key header fields.', onBytes: () => { setOutput('Loaded. Click PARSE.'); } }),
+                    e('button', { onClick: parseHeaders, className: 'w-full px-4 py-3 bg-[#00ff41]/15 border border-[#00ff41]/60 rounded text-xs font-bold hover:bg-[#00ff41]/20' }, 'PARSE HEADERS'),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-40 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                    e('button', { onClick: () => sendToWorkspace(output, '', { type: 'headers', fileName }), className: 'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND → WORKSPACE')
+                );
+            }
+
+            // STRINGS + REGEX
+            if (tool === 'strings-regex') {
+                const runPresets = (preset) => {
+                    const text = input || '';
+                    const presets = {
+                        flags: /[A-Za-z0-9_\\-]{2,}\\{[^\\n\\r]{4,120}\\}/g,
+                        jwt: /eyJ[a-zA-Z0-9_\\-]+\\.[a-zA-Z0-9_\\-]+\\.[a-zA-Z0-9_\\-]+/g,
+                        urls: /https?:\\/\\/[\\w\\-\\.:%\\/?#\\[\\]@!$&'()*+,;=]+/g,
+                        emails: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g,
+                        hex: /\\b[0-9a-fA-F]{16,}\\b/g
+                    };
+                    const r = presets[preset] || presets.flags;
+                    const matches = text.match(r) || [];
+                    setOutput(`Matches (${preset}): ${matches.length}\\n\\n` + matches.join('\\n'));
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Strings + Regex'),
+                    e(FileDropZone, { label: 'Drop a binary here or upload', help: 'Extracts ASCII strings and lets you run common regex presets (flags/tokens/URLs).', onBytes: (u8) => {
+                        const strs = extractStrings(u8, minStringLen).join('\\n');
+                        setInput(strs);
+                        setOutput(`Extracted strings: ${strs ? strs.split('\\n').length : 0}`);
+                    } }),
+                    e('div', { className: 'grid grid-cols-2 gap-4' },
+                        e('div', null,
+                            e('div', { className: 'text-xs text-gray-400 mb-2' }, 'INPUT (strings)'),
+                            e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                        ),
+                        e('div', null,
+                            e('div', { className: 'text-xs text-gray-400 mb-2' }, 'OUTPUT (matches)'),
+                            e('textarea', { value: output, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                        )
+                    ),
+                    e('div', { className: 'flex flex-wrap gap-2' },
+                        e('div', { className: 'flex items-center gap-2' },
+                            e('span', { className: 'text-xs text-gray-500' }, 'Min string len'),
+                            e('input', { type: 'number', min: 2, max: 32, value: minStringLen, onChange: (ev) => setMinStringLen(parseInt(ev.target.value || '4', 10)), className: 'w-20 px-2 py-1 rounded bg-black/40 border border-gray-700 text-xs font-mono' })
+                        ),
+                        e('button', { onClick: () => runPresets('flags'), className: 'px-3 py-2 bg-[#00ff41]/10 border border-[#00ff41]/40 rounded text-xs font-bold' }, 'FLAGS'),
+                        e('button', { onClick: () => runPresets('jwt'), className: 'px-3 py-2 bg-[#00d9ff]/10 border border-[#00d9ff]/40 rounded text-xs font-bold' }, 'JWT'),
+                        e('button', { onClick: () => runPresets('urls'), className: 'px-3 py-2 bg-[#ff00ff]/10 border border-[#ff00ff]/40 rounded text-xs font-bold' }, 'URLS'),
+                        e('button', { onClick: () => runPresets('emails'), className: 'px-3 py-2 bg-gray-800/40 border border-gray-700 rounded text-xs font-bold' }, 'EMAILS'),
+                        e('button', { onClick: () => runPresets('hex'), className: 'px-3 py-2 bg-gray-800/40 border border-gray-700 rounded text-xs font-bold' }, 'HEX')
+                    ),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: () => sendToWorkspace(output, '', { type: 'regex', fileName }), className: 'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND MATCHES → WORKSPACE'),
+                        e('button', { onClick: () => sendToWorkspace(input, '', { type: 'strings', fileName }), className: 'w-full px-3 py-2 bg-gray-800/40 border border-gray-700 rounded text-xs font-bold' }, 'SEND STRINGS → WORKSPACE')
+                    )
+                );
+            }
+
+            // BYTE PATTERN FINDER
+            if (tool === 'pattern-finder') {
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Byte Pattern Finder'),
+                    e(FileDropZone, { label: 'Drop a file here or upload', help: 'Searches for a hex byte sequence and returns offsets.', onBytes: () => { setOutput('Loaded. Enter a pattern.'); setPatternResults(''); } }),
+                    e('input', { value: patternHex, onChange: (ev) => setPatternHex(ev.target.value), placeholder: 'Hex pattern (e.g., 504B0304 for ZIP local header)', className: 'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm font-mono focus:border-[#00ff41] focus:outline-none' }),
+                    e('button', { onClick: findPattern, className: 'w-full px-4 py-3 bg-[#00ff41]/15 border border-[#00ff41]/60 rounded text-xs font-bold hover:bg-[#00ff41]/20' }, 'FIND'),
+                    e('textarea', { value: patternResults, readOnly: true, className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                    e('button', { onClick: () => sendToWorkspace(patternResults, '', { type: 'pattern', fileName, pattern: patternHex }), className: 'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND RESULTS → WORKSPACE')
+                );
+            }
+
+            // WORKSPACE HUB
+            if (tool === 'workspace-hub') {
+                const exportCase = () => {
+                    try {
+                        const payload = {
+                            createdAt: new Date().toISOString(),
+                            workspace: workspaceData,
+                            activeTool: tool,
+                            note: input,
+                            output
+                        };
+                        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `cypher_case_${Date.now()}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    } catch(e) {
+                        console.error(e);
+                        setOutput('Export failed.');
+                    }
+                };
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Workspace Hub'),
+                    e('div', { className: 'grid grid-cols-2 gap-4' },
+                        e('div', null,
+                            e('div', { className: 'text-xs text-gray-400 mb-2' }, 'WORKSPACE TEXT'),
+                            e('textarea', { value: workspaceData.text || '', onChange: (ev)=> setWorkspaceData({ ...workspaceData, text: ev.target.value }), className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                        ),
+                        e('div', null,
+                            e('div', { className: 'text-xs text-gray-400 mb-2' }, 'WORKSPACE HEX'),
+                            e('textarea', { value: workspaceData.hex || '', onChange: (ev)=> setWorkspaceData({ ...workspaceData, hex: ev.target.value }), className: 'w-full h-48 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                        )
+                    ),
+                    e('div', { className: 'flex gap-2' },
+                        e('button', { onClick: () => setWorkspaceData({ text:'', hex:'', meta:{} }), className: 'w-full px-4 py-2 bg-gray-800/40 border border-gray-700 rounded text-xs font-bold' }, 'CLEAR'),
+                        e('button', { onClick: () => { setInput(workspaceData.text || ''); setOutput('Loaded workspace text into input.'); }, className: 'w-full px-4 py-2 bg-[#00d9ff]/10 border border-[#00d9ff]/40 rounded text-xs font-bold' }, 'LOAD TEXT → INPUT'),
+                        e('button', { onClick: exportCase, className: 'w-full px-4 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'EXPORT CASE (JSON)')
+                    ),
+                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
+                );
+            }
+
+            // NOTES VAULT (lightweight markdown vault)
+            if (tool === 'notes-vault') {
+                const [noteQuery, setNoteQuery] = useState('');
+                const [notes, setNotes] = useState(() => {
+                    try { return JSON.parse(localStorage.getItem('cypher_notes') || '[]'); } catch(e){ return []; }
+                });
+                const [activeNoteId, setActiveNoteId] = useState(() => (notes[0] && notes[0].id) ? notes[0].id : null);
+
+                useEffect(() => { try { localStorage.setItem('cypher_notes', JSON.stringify(notes)); } catch(e){} }, [notes]);
+
+                const activeNote = notes.find(n => n.id === activeNoteId) || null;
+
+                const createNote = () => {
+                    const n = { id: 'n_'+Date.now(), title: 'New Note', body: '', updatedAt: Date.now() };
+                    setNotes(prev => [n, ...prev]);
+                    setActiveNoteId(n.id);
+                };
+                const deleteNote = () => {
+                    if (!activeNote) return;
+                    setNotes(prev => prev.filter(n => n.id !== activeNote.id));
+                    setActiveNoteId(null);
+                };
+                const updateNote = (patch) => {
+                    if (!activeNote) return;
+                    setNotes(prev => prev.map(n => n.id===activeNote.id ? { ...n, ...patch, updatedAt: Date.now() } : n));
+                };
+
+                const filtered = (noteQuery.trim() ? notes.filter(n =>
+                    (n.title||'').toLowerCase().includes(noteQuery.toLowerCase()) ||
+                    (n.body||'').toLowerCase().includes(noteQuery.toLowerCase())
+                ) : notes);
+
+                return e('div', { className: 'space-y-4' },
+                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Notes Vault'),
+                    e('div', { className: 'grid grid-cols-12 gap-4' },
+                        e('div', { className: 'col-span-4 rounded border border-gray-700 bg-black/30 p-3' },
+                            e('div', { className: 'flex gap-2 mb-2' },
+                                e('input', { value: noteQuery, onChange: (ev)=>setNoteQuery(ev.target.value), placeholder:'Search notes…', className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm' }),
+                                e('button', { onClick: createNote, className: 'px-3 py-2 rounded bg-[#00ff41]/10 border border-[#00ff41]/50 text-xs font-bold' }, 'NEW')
+                            ),
+                            e('div', { className: 'space-y-2 max-h-[420px] overflow-auto pr-1' },
+                                ...filtered.map(n => e('button', {
+                                    key: n.id,
+                                    onClick: () => setActiveNoteId(n.id),
+                                    className: `w-full text-left p-2 rounded border ${n.id===activeNoteId ? 'border-[#00ff41]/60 bg-[#00ff41]/10' : 'border-gray-800 bg-black/20 hover:border-gray-600'}`
+                                },
+                                    e('div', { className: 'text-sm font-bold text-gray-200' }, n.title),
+                                    e('div', { className: 'text-xs text-gray-500' }, new Date(n.updatedAt).toLocaleString())
+                                ))
+                            )
+                        ),
+                        e('div', { className: 'col-span-8 space-y-3' },
+                            !activeNote ? e('div', { className: 'p-6 rounded border border-gray-700 bg-black/30 text-gray-400' }, 'Create or select a note.') :
+                            e(React.Fragment, null,
+                                e('input', { value: activeNote.title, onChange: (ev)=>updateNote({ title: ev.target.value }), className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm font-bold text-gray-200' }),
+                                e('textarea', { value: activeNote.body, onChange: (ev)=>updateNote({ body: ev.target.value }), placeholder:'# Markdown…', className:'w-full h-64 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                                e('div', { className: 'flex gap-2' },
+                                    e('button', { onClick: () => sendToWorkspace(activeNote.body, '', { type:'note', title: activeNote.title }), className:'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND NOTE → WORKSPACE'),
+                                    e('button', { onClick: deleteNote, className:'w-full px-3 py-2 bg-red-500/10 border border-red-500/40 rounded text-xs font-bold' }, 'DELETE')
+                                )
+                            )
+                        )
+                    )
                 );
             }
 
