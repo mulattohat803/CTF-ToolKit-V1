@@ -325,11 +325,11 @@ function CTFToolkit() {
                     { id: 'hash-cracker', name: 'Hash Helper', desc: 'Generate variations' },
                     { id: 'username-formatter', name: 'Username Formatter', desc: 'Username formats' },
                     { id: 'email-permutator', name: 'Email Permutator', desc: 'Email variations' },
-                    { id: 'phone-formatter', name: 'Phone Formatter', desc: 'Format phone numbers' }
-                ,                    { id: 'defang-refang', name: 'Defang / Refang IOCs', desc: 'Safe sharing of URLs/IPs + extract IOCs' },
+                    { id: 'phone-formatter', name: 'Phone Formatter', desc: 'Format phone numbers' },
+                    { id: 'defang-refang', name: 'Defang / Refang IOCs', desc: 'Safe sharing of URLs/IPs + extract IOCs' },
                     { id: 'timestamp-converter', name: 'Timestamp Converter', desc: 'Unix ↔ human time' },
                     { id: 'cidr-calculator', name: 'CIDR/Subnet Calculator', desc: 'Network ranges & hosts' }
-                ]
+                ],
                 workspace: [
                     { id: 'workspace-hub', name: 'Workspace Hub', desc: 'Send data between tools, export cases' },
                     { id: 'notes-vault', name: 'Notes Vault', desc: 'Markdown notes + search + export' }
@@ -1507,7 +1507,7 @@ const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${cou
                     const presets = {
                         flags: /[A-Za-z0-9_\\-]{2,}\\{[^\\n\\r]{4,120}\\}/g,
                         jwt: /eyJ[a-zA-Z0-9_\\-]+\\.[a-zA-Z0-9_\\-]+\\.[a-zA-Z0-9_\\-]+/g,
-                        urls: /https?:\\/\\/[\\w\\-\\.:%\\/?#\\[\\]@!$&'()*+,;=]+/g,
+                        urls: /https?:\/\/[^\s"'<>]+/g,
                         emails: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g,
                         hex: /\\b[0-9a-fA-F]{16,}\\b/g
                     };
