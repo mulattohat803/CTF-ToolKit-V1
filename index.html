@@ -48,6 +48,14 @@
     if(!window.React || !window.ReactDOM){
       show('🚨 React libraries failed to load.\nCheck network access to unpkg.com / react-dom.');
     }
+  // Hook aliases (avoid ReferenceError in CDN builds)
+  const React = window.React;
+  const ReactDOM = window.ReactDOM;
+  const useState = React.useState;
+  const useEffect = React.useEffect;
+  const useMemo = React.useMemo;
+  const useRef = React.useRef;
+
   }, 1000);
 })();
 </script>
