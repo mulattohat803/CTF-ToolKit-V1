@@ -1660,8 +1660,7 @@ const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${cou
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', mountApp);
         } else {
-  try { mountApp(); } catch(e){ (window.__CY_FATAL__||console.error)('🚨 mountApp exception
-' + (e && (e.stack||e.message) || e)); }
+  try { mountApp(); } catch(e){ (window.__CY_FATAL__||console.error)('🚨 mountApp exception\\n' + (e && (e.stack||e.message) || e)); }
         }
     </script>
 </body>
