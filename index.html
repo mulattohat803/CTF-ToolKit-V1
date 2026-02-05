@@ -418,7 +418,80 @@ function CTFToolkit() {
                 )
             );
         }
-        function ToolInterface({ category, tool, color, workspaceData, setWorkspaceData }) {
+        
+        function NotesVault({ color, sendToWorkspace }) {
+            const { useState, useEffect } = React;
+
+            const [noteQuery, setNoteQuery] = useState('');
+            const [notes, setNotes] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('cypher_notes') || '[]'); } catch(e){ return []; }
+            });
+            const [activeNoteId, setActiveNoteId] = useState(() => {
+                try {
+                    const stored = JSON.parse(localStorage.getItem('cypher_notes') || '[]');
+                    return (stored[0] && stored[0].id) ? stored[0].id : null;
+                } catch(e) { return null; }
+            });
+
+            useEffect(() => { try { localStorage.setItem('cypher_notes', JSON.stringify(notes)); } catch(e){} }, [notes]);
+
+            const activeNote = notes.find(n => n.id === activeNoteId) || null;
+
+            const createNote = () => {
+                const n = { id: 'n_'+Date.now(), title: 'New Note', body: '', updatedAt: Date.now() };
+                setNotes(prev => [n, ...prev]);
+                setActiveNoteId(n.id);
+            };
+            const deleteNote = () => {
+                if (!activeNote) return;
+                setNotes(prev => prev.filter(n => n.id !== activeNote.id));
+                setActiveNoteId(null);
+            };
+            const updateNote = (patch) => {
+                if (!activeNote) return;
+                setNotes(prev => prev.map(n => n.id===activeNote.id ? { ...n, ...patch, updatedAt: Date.now() } : n));
+            };
+
+            const filtered = (noteQuery.trim() ? notes.filter(n =>
+                (n.title||'').toLowerCase().includes(noteQuery.toLowerCase()) ||
+                (n.body||'').toLowerCase().includes(noteQuery.toLowerCase())
+            ) : notes);
+
+            return e('div', { className: 'space-y-4' },
+                e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Notes Vault'),
+                e('div', { className: 'grid grid-cols-12 gap-4' },
+                    e('div', { className: 'col-span-4 rounded border border-gray-700 bg-black/30 p-3' },
+                        e('div', { className: 'flex gap-2 mb-2' },
+                            e('input', { value: noteQuery, onChange: (ev)=>setNoteQuery(ev.target.value), placeholder:'Search notes…', className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm' }),
+                            e('button', { onClick: createNote, className: 'px-3 py-2 rounded bg-[#00ff41]/10 border border-[#00ff41]/50 text-xs font-bold' }, 'NEW')
+                        ),
+                        e('div', { className: 'space-y-2 max-h-[420px] overflow-auto pr-1' },
+                            ...filtered.map(n => e('button', {
+                                key: n.id,
+                                onClick: () => setActiveNoteId(n.id),
+                                className: `w-full text-left p-2 rounded border ${n.id===activeNoteId ? 'border-[#00ff41]/60 bg-[#00ff41]/10' : 'border-gray-800 bg-black/20 hover:border-gray-600'}`
+                            },
+                                e('div', { className: 'text-sm font-bold text-gray-200' }, n.title),
+                                e('div', { className: 'text-xs text-gray-500' }, new Date(n.updatedAt).toLocaleString())
+                            ))
+                        )
+                    ),
+                    e('div', { className: 'col-span-8 space-y-3' },
+                        !activeNote ? e('div', { className: 'p-6 rounded border border-gray-700 bg-black/30 text-gray-400' }, 'Create or select a note.') :
+                        e(React.Fragment, null,
+                            e('input', { value: activeNote.title, onChange: (ev)=>updateNote({ title: ev.target.value }), className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm font-bold text-gray-200' }),
+                            e('textarea', { value: activeNote.body, onChange: (ev)=>updateNote({ body: ev.target.value }), placeholder:'# Markdown…', className:'w-full h-64 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
+                            e('div', { className: 'flex gap-2' },
+                                e('button', { onClick: () => sendToWorkspace(activeNote.body, '', { type:'note', title: activeNote.title }), className:'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND NOTE → WORKSPACE'),
+                                e('button', { onClick: deleteNote, className:'w-full px-3 py-2 bg-red-500/10 border border-red-500/40 rounded text-xs font-bold' }, 'DELETE')
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+function ToolInterface({ category, tool, color, workspaceData, setWorkspaceData }) {
             const [input, setInput] = useState('');
             
             const [output, setOutput] = useState('');
@@ -1537,68 +1610,7 @@ const format = () => { const clean = input.replace(/\D/g, ''); setOutput([`${cou
 
             // NOTES VAULT (lightweight markdown vault)
             if (tool === 'notes-vault') {
-                const [noteQuery, setNoteQuery] = useState('');
-                const [notes, setNotes] = useState(() => {
-                    try { return JSON.parse(localStorage.getItem('cypher_notes') || '[]'); } catch(e){ return []; }
-                });
-                const [activeNoteId, setActiveNoteId] = useState(() => (notes[0] && notes[0].id) ? notes[0].id : null);
-
-                useEffect(() => { try { localStorage.setItem('cypher_notes', JSON.stringify(notes)); } catch(e){} }, [notes]);
-
-                const activeNote = notes.find(n => n.id === activeNoteId) || null;
-
-                const createNote = () => {
-                    const n = { id: 'n_'+Date.now(), title: 'New Note', body: '', updatedAt: Date.now() };
-                    setNotes(prev => [n, ...prev]);
-                    setActiveNoteId(n.id);
-                };
-                const deleteNote = () => {
-                    if (!activeNote) return;
-                    setNotes(prev => prev.filter(n => n.id !== activeNote.id));
-                    setActiveNoteId(null);
-                };
-                const updateNote = (patch) => {
-                    if (!activeNote) return;
-                    setNotes(prev => prev.map(n => n.id===activeNote.id ? { ...n, ...patch, updatedAt: Date.now() } : n));
-                };
-
-                const filtered = (noteQuery.trim() ? notes.filter(n =>
-                    (n.title||'').toLowerCase().includes(noteQuery.toLowerCase()) ||
-                    (n.body||'').toLowerCase().includes(noteQuery.toLowerCase())
-                ) : notes);
-
-                return e('div', { className: 'space-y-4' },
-                    e('h3', { className: 'text-lg font-bold mb-4', style: { color }}, 'Notes Vault'),
-                    e('div', { className: 'grid grid-cols-12 gap-4' },
-                        e('div', { className: 'col-span-4 rounded border border-gray-700 bg-black/30 p-3' },
-                            e('div', { className: 'flex gap-2 mb-2' },
-                                e('input', { value: noteQuery, onChange: (ev)=>setNoteQuery(ev.target.value), placeholder:'Search notes…', className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm' }),
-                                e('button', { onClick: createNote, className: 'px-3 py-2 rounded bg-[#00ff41]/10 border border-[#00ff41]/50 text-xs font-bold' }, 'NEW')
-                            ),
-                            e('div', { className: 'space-y-2 max-h-[420px] overflow-auto pr-1' },
-                                ...filtered.map(n => e('button', {
-                                    key: n.id,
-                                    onClick: () => setActiveNoteId(n.id),
-                                    className: `w-full text-left p-2 rounded border ${n.id===activeNoteId ? 'border-[#00ff41]/60 bg-[#00ff41]/10' : 'border-gray-800 bg-black/20 hover:border-gray-600'}`
-                                },
-                                    e('div', { className: 'text-sm font-bold text-gray-200' }, n.title),
-                                    e('div', { className: 'text-xs text-gray-500' }, new Date(n.updatedAt).toLocaleString())
-                                ))
-                            )
-                        ),
-                        e('div', { className: 'col-span-8 space-y-3' },
-                            !activeNote ? e('div', { className: 'p-6 rounded border border-gray-700 bg-black/30 text-gray-400' }, 'Create or select a note.') :
-                            e(React.Fragment, null,
-                                e('input', { value: activeNote.title, onChange: (ev)=>updateNote({ title: ev.target.value }), className:'w-full px-3 py-2 rounded bg-black/40 border border-gray-700 text-sm font-bold text-gray-200' }),
-                                e('textarea', { value: activeNote.body, onChange: (ev)=>updateNote({ body: ev.target.value }), placeholder:'# Markdown…', className:'w-full h-64 bg-black/50 border border-gray-700 rounded p-3 text-sm font-mono resize-none' }),
-                                e('div', { className: 'flex gap-2' },
-                                    e('button', { onClick: () => sendToWorkspace(activeNote.body, '', { type:'note', title: activeNote.title }), className:'w-full px-3 py-2 bg-[#7c3aed]/15 border border-[#7c3aed]/50 rounded text-xs font-bold' }, 'SEND NOTE → WORKSPACE'),
-                                    e('button', { onClick: deleteNote, className:'w-full px-3 py-2 bg-red-500/10 border border-red-500/40 rounded text-xs font-bold' }, 'DELETE')
-                                )
-                            )
-                        )
-                    )
-                );
+                return e(NotesVault, { color, sendToWorkspace });
             }
 
             return e('div', { className: 'text-center py-12 text-gray-500' }, e(icons.Terminal, { className: 'w-16 h-16 mx-auto mb-4 opacity-50' }), e('p', { className: 'text-lg font-bold' }, 'Tool Ready'), e('p', { className: 'text-sm mt-2' }, 'Select a tool to begin'));
